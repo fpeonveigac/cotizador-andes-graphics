@@ -7,6 +7,53 @@
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDn7qthU4vuCQ3Qwrx53iM1Z9cJE4FexHE",
+    authDomain: "cotizador-andes-graphics.firebaseapp.com",
+    projectId: "cotizador-andes-graphics",
+    storageBucket: "cotizador-andes-graphics.firebasestorage.app",
+    messagingSenderId: "483081607158",
+    appId: "1:483081607158:web:634d0c092ff1443f6e19d7"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  const ARTICULOS_DEFAULT = [
+    { id:1, nombre:"Adhesivo PVC", descripcion:"Adhesivo PVC blackout mate impreso en alta resolución, incluye laminado", precio:7000 },
+    { id:2, nombre:"Bandera tela", descripcion:"Bandera tela 60x60 cm con costuras y argollas", precio:25000 },
+    { id:3, nombre:"Letrero acrílico", descripcion:"Letrero acrílico 3mm 80x100 cm, impreso en vinilo adhesivo", precio:49000 },
+    { id:4, nombre:"Malla Mesh", descripcion:"Malla Mesh 2.57 ancho x 8 metros de alto", precio:160000 },
+    { id:5, nombre:"Paloma publicitaria", descripcion:"Paloma de madera doble cara, 2x1 mts, pino seco cepillado", precio:22000 },
+  ];
+
+  async function loadData() {
+    try {
+      const snap = await getDoc(doc(db, "datos", "principal"));
+      if (snap.exists()) return snap.data();
+      return { clientes:[], articulos:ARTICULOS_DEFAULT, cotizaciones:[], logo:null };
+    } catch(e) {
+      console.error("Error cargando datos:", e);
+      return { clientes:[], articulos:ARTICULOS_DEFAULT, cotizaciones:[], logo:null };
+    }
+  }
+
+  async function saveData(data) {
+    try {
+      await setDoc(doc(db, "datos", "principal"), data);
+      return true;
+    } catch(e) {
+      console.error("Error guardando:", e);
+      return false;
+    }
+  }
+
+  window.__firebase = { loadData, saveData };
+</script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; background: #f0f4fa; color: #1a1a1a; min-height: 100vh; }
@@ -31,6 +78,7 @@
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
   .modal-box { background: #fff; border-radius: 14px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 40px rgba(0,0,0,0.18); }
   .action-bar { background: #fff; border-top: 1.5px solid #d0daea; padding: 16px 24px; display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; border-radius: 12px; }
+  .loading-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px; }
   @keyframes spin { to { transform: rotate(360deg); } }
   @media print {
     body > #root > * { display: none !important; }
@@ -72,36 +120,19 @@ function calcTotals(items) {
   return { neto, ivaTotal, total: neto + ivaTotal };
 }
 
-/* ══════════════════════════════════════════
-   PDF RENDER — estilo Mercado Público
-══════════════════════════════════════════ */
 function renderPrint(cot, logoSrc) {
   const { neto, ivaTotal, total } = calcTotals(cot.items);
   const prevTitle = document.title;
   document.title = `${cot.numero} - ${cot.cliente?.nombre || "sin-cliente"}`;
-
-  const sectionLabel = `
-    font-size:9px;color:#888;font-weight:600;text-transform:uppercase;
-    letter-spacing:.6px;margin-bottom:3px;display:block;
-  `;
+  const sectionLabel = `font-size:9px;color:#555;font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:3px;display:block;`;
   const sectionValue = `font-size:12px;color:#1a1a1a;`;
-
-  const infoCell = (label, value) => `
-    <div style="min-width:140px">
-      <span style="${sectionLabel}">${label}</span>
-      <span style="${sectionValue}">${value || "—"}</span>
-    </div>`;
-
+  const infoCell = (label, value) => `<div style="min-width:140px"><span style="${sectionLabel}">${label}</span><span style="${sectionValue}">${value || "—"}</span></div>`;
   const el = document.getElementById("print-area");
   el.innerHTML = `
   <div style="font-family:'Segoe UI',Arial,sans-serif;font-size:12px;padding:24px 36px;color:#1a1a1a;background:#fff;max-width:860px;margin:0 auto">
-
-    <!-- HEADER -->
     <div style="display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:14px;border-bottom:2px solid #1a5fa8;margin-bottom:6px">
       <div style="display:flex;align-items:center;gap:14px">
-        ${logoSrc
-          ? `<img src="${logoSrc}" style="width:64px;height:64px;object-fit:contain"/>`
-          : `<div style="width:64px;height:64px;background:#1a5fa8;border-radius:8px;display:flex;align-items:center;justify-content:center"><span style="color:white;font-weight:bold;font-size:11px">AG</span></div>`}
+        ${logoSrc ? `<img src="${logoSrc}" style="width:64px;height:64px;object-fit:contain"/>` : `<div style="width:64px;height:64px;background:#1a5fa8;border-radius:8px;display:flex;align-items:center;justify-content:center"><span style="color:white;font-weight:bold;font-size:11px">AG</span></div>`}
         <div>
           <div style="font-size:15px;font-weight:700;color:#1a1a1a">${EMPRESA.nombre}</div>
           <div style="font-size:10px;color:#666;margin-top:2px">RUT: ${EMPRESA.rut}</div>
@@ -114,15 +145,11 @@ function renderPrint(cot, logoSrc) {
         <div style="font-size:10px;color:#888">Condición de pago: ${cot.condicionPago}</div>
       </div>
     </div>
-
-    <!-- TÍTULO -->
     <div style="margin:16px 0 14px">
       <span style="font-size:18px;font-weight:700;color:#1a5fa8;text-transform:uppercase;border-bottom:3px solid #e8a020;padding-bottom:4px">COTIZACIÓN</span>
     </div>
-
-    <!-- DATOS DEL PROVEEDOR -->
     <div style="border:1px solid #b8cce8;border-radius:8px;padding:14px 18px;margin-bottom:12px;background:#b8cce8">
-      <div style="font-size:10px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">Datos del Proveedor</div>
+      <div style="font-size:10px;font-weight:700;color:#444;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">Datos del Proveedor</div>
       <div style="display:flex;flex-wrap:wrap;gap:12px 32px">
         ${infoCell("Empresa", EMPRESA.nombre)}
         ${infoCell("RUT", EMPRESA.rut)}
@@ -131,11 +158,9 @@ function renderPrint(cot, logoSrc) {
         ${infoCell("Teléfono", EMPRESA.telefono)}
       </div>
     </div>
-
-    <!-- DATOS DEL CLIENTE -->
     ${cot.cliente ? `
     <div style="border:1px solid #b8cce8;border-radius:8px;padding:14px 18px;margin-bottom:12px;background:#b8cce8">
-      <div style="font-size:10px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">Datos del Cliente</div>
+      <div style="font-size:10px;font-weight:700;color:#444;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">Datos del Cliente</div>
       <div style="display:flex;flex-wrap:wrap;gap:12px 32px">
         ${infoCell("Empresa", cot.cliente.nombre)}
         ${infoCell("RUT", cot.cliente.rut)}
@@ -145,24 +170,21 @@ function renderPrint(cot, logoSrc) {
         ${infoCell("Dirección", cot.direccionEnvio || cot.cliente.direccion)}
       </div>
     </div>` : ""}
-
-    <!-- TABLA DE ÍTEMS -->
     <table style="width:100%;border-collapse:collapse;margin-bottom:0;font-size:11px">
       <thead>
         <tr style="background:#1a5fa8;color:white">
-          <th style="padding:9px 10px;text-align:left;width:44px;font-weight:600;letter-spacing:.3px">Nº</th>
-          <th style="padding:9px 10px;text-align:left;width:130px;font-weight:600;letter-spacing:.3px">Código</th>
-          <th style="padding:9px 10px;text-align:left;font-weight:600;letter-spacing:.3px">Descripción</th>
-          <th style="padding:9px 10px;text-align:left;font-weight:600;letter-spacing:.3px">Esp. del Proveedor</th>
-          <th style="padding:9px 10px;text-align:center;width:60px;font-weight:600;letter-spacing:.3px">Cant.</th>
-          <th style="padding:9px 10px;text-align:right;width:96px;font-weight:600;letter-spacing:.3px">P. Unitario</th>
-          <th style="padding:9px 10px;text-align:right;width:96px;font-weight:600;letter-spacing:.3px">Subtotal</th>
+          <th style="padding:9px 10px;text-align:left;width:44px;font-weight:600">Nº</th>
+          <th style="padding:9px 10px;text-align:left;width:100px;font-weight:600">Código</th>
+          <th style="padding:9px 10px;text-align:left;font-weight:600">Descripción</th>
+          <th style="padding:9px 10px;text-align:left;font-weight:600">Esp. del Proveedor</th>
+          <th style="padding:9px 10px;text-align:center;width:60px;font-weight:600">Cant.</th>
+          <th style="padding:9px 10px;text-align:right;width:96px;font-weight:600">P. Unitario</th>
+          <th style="padding:9px 10px;text-align:right;width:96px;font-weight:600">Subtotal</th>
         </tr>
       </thead>
       <tbody>
-        ${(cot.items || []).map((it, i) => {
-          const sub = (Number(it.cantidad)||0)*(Number(it.precio)||0);
-          const tot = it.iva ? sub : sub;
+        ${(cot.items||[]).map((it,i)=>{
+          const sub=(Number(it.cantidad)||0)*(Number(it.precio)||0);
           return `<tr style="background:${i%2===0?"#fff":"#f5f8fd"};border-bottom:1px solid #e5eaf3">
             <td style="padding:9px 10px;color:#888">${i+1}</td>
             <td style="padding:9px 10px;color:#555">${it.codigo||"—"}</td>
@@ -175,50 +197,30 @@ function renderPrint(cot, logoSrc) {
         }).join("")}
       </tbody>
     </table>
-
-    <!-- TOTALES -->
     <div style="display:flex;justify-content:flex-end;margin:0 0 14px">
       <table style="border-collapse:collapse;min-width:260px;font-size:12px;border:1px solid #dde5f0;border-top:none">
-        <tr style="border-bottom:1px solid #dde5f0">
-          <td style="padding:7px 16px;text-align:right;color:#555;background:#f8fafc">Subtotal:</td>
-          <td style="padding:7px 16px;text-align:right;background:#fff">${fmtCLP(neto)}</td>
-        </tr>
-        <tr style="border-bottom:1px solid #dde5f0">
-          <td style="padding:7px 16px;text-align:right;color:#555;background:#f8fafc">IVA (19%):</td>
-          <td style="padding:7px 16px;text-align:right;background:#fff">${fmtCLP(ivaTotal)}</td>
-        </tr>
-        <tr>
-          <td style="padding:9px 16px;text-align:right;font-weight:700;font-size:13px;background:#f0f4fa">TOTAL:</td>
-          <td style="padding:9px 16px;text-align:right;font-weight:700;font-size:13px;background:#f0f4fa;color:#1a5fa8">${fmtCLP(total)}</td>
-        </tr>
+        <tr style="border-bottom:1px solid #dde5f0"><td style="padding:7px 16px;text-align:right;color:#555;background:#f8fafc">Subtotal:</td><td style="padding:7px 16px;text-align:right;background:#fff">${fmtCLP(neto)}</td></tr>
+        <tr style="border-bottom:1px solid #dde5f0"><td style="padding:7px 16px;text-align:right;color:#555;background:#f8fafc">IVA (19%):</td><td style="padding:7px 16px;text-align:right;background:#fff">${fmtCLP(ivaTotal)}</td></tr>
+        <tr><td style="padding:9px 16px;text-align:right;font-weight:700;font-size:13px;background:#f0f4fa">TOTAL:</td><td style="padding:9px 16px;text-align:right;font-weight:700;font-size:13px;background:#f0f4fa;color:#1a5fa8">${fmtCLP(total)}</td></tr>
       </table>
     </div>
-
-    <!-- OBSERVACIONES -->
-    ${(cot.notaPie || cot.bancarios) ? `
+    ${(cot.notaPie||cot.bancarios)?`
     <div style="background:#f0d060;border:1px solid #f0d060;border-radius:8px;padding:12px 16px;margin-top:4px">
-      <div style="font-weight:700;font-size:11px;color:#9a7a00;margin-bottom:5px">Observaciones:</div>
+      <div style="font-weight:700;font-size:11px;color:#7a6000;margin-bottom:5px">Observaciones:</div>
       <div style="font-size:11px;color:#444;line-height:1.6">
-        ${cot.notaPie ? `${cot.notaPie.replace(/\n/g,"<br/>")}` : ""}
-        ${cot.notaPie && cot.bancarios ? " · " : ""}
-        ${cot.bancarios ? `Datos bancarios: ${cot.bancarios.replace(/\n/g," · ")}` : ""}
+        ${cot.notaPie?cot.notaPie.replace(/\n/g,"<br/>"):""}
+        ${cot.notaPie&&cot.bancarios?" · ":""}
+        ${cot.bancarios?`Datos bancarios: ${cot.bancarios.replace(/\n/g," · ")}`:""}
       </div>
-    </div>` : ""}
-
-    <!-- PIE -->
+    </div>`:""}
     <div style="margin-top:20px;padding-top:10px;border-top:1px solid #dde5f0;font-size:9px;color:#aaa;text-align:right">
       Página 1 de 1 · ${EMPRESA.nombre} · ${EMPRESA.rut}
     </div>
   </div>`;
-
   el.style.display = "block";
-  setTimeout(() => {
-    window.print();
-    setTimeout(() => { document.title = prevTitle; el.style.display = "none"; el.innerHTML = ""; }, 1000);
-  }, 200);
+  setTimeout(() => { window.print(); setTimeout(() => { document.title = prevTitle; el.style.display = "none"; el.innerHTML = ""; }, 1000); }, 200);
 }
 
-/* ── Modal ── */
 function Modal({ title, children, onClose }) {
   return (
     <div className="modal-overlay" onClick={e => e.target===e.currentTarget && onClose()}>
@@ -233,7 +235,6 @@ function Modal({ title, children, onClose }) {
   );
 }
 
-/* ── Logo ── */
 function LogoImg({ size=48, logoSrc, onLogoChange, style={} }) {
   const inputRef = useRef();
   function handleFile(e) {
@@ -259,32 +260,66 @@ function LogoImg({ size=48, logoSrc, onLogoChange, style={} }) {
   );
 }
 
-/* ── Storage (localStorage por ahora, reemplazable por Firebase) ── */
-function useLS(key, def) {
-  const [val, setVal] = useState(() => { try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : def; } catch { return def; } });
-  const set = useCallback(v => { setVal(v); try { localStorage.setItem(key, JSON.stringify(v)); } catch {} }, [key]);
-  return [val, set];
+function App() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    async function load() {
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      let tries = 0;
+      while (!window.__firebase && tries < 20) { await wait(200); tries++; }
+      if (!window.__firebase) { setError("No se pudo conectar con Firebase. Verifica tu conexión a internet."); setLoading(false); return; }
+      const d = await window.__firebase.loadData();
+      setData(d);
+      setLoading(false);
+    }
+    load();
+  }, []);
+
+  async function updateData(patch) {
+    const next = { ...data, ...patch };
+    setData(next);
+    setSaving(true);
+    await window.__firebase.saveData(next);
+    setSaving(false);
+  }
+
+  if (loading) return (
+    <div className="loading-screen">
+      <div style={{ width:48, height:48, background:"#1a5fa8", borderRadius:12, display:"flex", alignItems:"center", justifyContent:"center" }}>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" stroke="white" strokeWidth="1.8"/></svg>
+      </div>
+      <div style={{ display:"flex", alignItems:"center", gap:10, color:"#1a5fa8", fontSize:15, fontWeight:500 }}>
+        <span style={{ display:"inline-block", width:18, height:18, border:"2.5px solid #1a5fa8", borderTopColor:"transparent", borderRadius:"50%", animation:"spin 0.7s linear infinite" }}></span>
+        Cargando datos…
+      </div>
+    </div>
+  );
+
+  if (error) return (
+    <div className="loading-screen">
+      <div style={{ background:"#fff", borderRadius:14, padding:32, maxWidth:400, textAlign:"center", border:"1px solid #d0daea" }}>
+        <div style={{ fontSize:36, marginBottom:12 }}>⚠️</div>
+        <div style={{ fontWeight:600, marginBottom:8 }}>Error de conexión</div>
+        <div style={{ fontSize:13, color:"#666", marginBottom:20 }}>{error}</div>
+        <button className="btn-blue" onClick={() => window.location.reload()}>Reintentar</button>
+      </div>
+    </div>
+  );
+
+  return <MainApp data={data} updateData={updateData} saving={saving} />;
 }
 
-/* ══════════════════════════════════════════
-   APP
-══════════════════════════════════════════ */
-function App() {
-  const [clientes, setClientes] = useLS("andes_clientes", []);
-  const [articulos, setArticulos] = useLS("andes_articulos", [
-    { id:1, nombre:"Adhesivo PVC", descripcion:"Adhesivo PVC blackout mate impreso en alta resolución, incluye laminado", precio:7000 },
-    { id:2, nombre:"Bandera tela", descripcion:"Bandera tela 60x60 cm con costuras y argollas", precio:25000 },
-    { id:3, nombre:"Letrero acrílico", descripcion:"Letrero acrílico 3mm 80x100 cm, impreso en vinilo adhesivo", precio:49000 },
-    { id:4, nombre:"Malla Mesh", descripcion:"Malla Mesh 2.57 ancho x 8 metros de alto", precio:160000 },
-    { id:5, nombre:"Paloma publicitaria", descripcion:"Paloma de madera doble cara, 2x1 mts, pino seco cepillado", precio:22000 },
-  ]);
-  const [cotizaciones, setCotizaciones] = useLS("andes_cotizaciones", []);
-  const [logo, setLogo] = useLS("andes_logo_v2", null);
+function MainApp({ data, updateData, saving }) {
   const [tab, setTab] = useState("Cotizaciones");
   const [view, setView] = useState("list");
   const [editCot, setEditCot] = useState(null);
   const [clienteModal, setClienteModal] = useState(null);
   const [articuloModal, setArticuloModal] = useState(null);
+  const { clientes, articulos, cotizaciones, logo } = data;
 
   const nextNum = cotizaciones.length > 0
     ? Math.max(...cotizaciones.filter(c => !isNaN(Number(c.numero))).map(c => Number(c.numero)||0)) + 1 : 1;
@@ -298,15 +333,18 @@ function App() {
     setView("edit");
   }
   function saveCot(c) {
-    setCotizaciones(prev => prev.find(x=>x.id===c.id) ? prev.map(x=>x.id===c.id?c:x) : [...prev,c]);
+    const next = cotizaciones.find(x=>x.id===c.id) ? cotizaciones.map(x=>x.id===c.id?c:x) : [...cotizaciones,c];
+    updateData({ cotizaciones: next });
     setEditCot(null); setView("list");
   }
   function saveCliente(c) {
-    setClientes(prev => prev.find(x=>x.id===c.id) ? prev.map(x=>x.id===c.id?c:x) : [...prev,c]);
+    const next = clientes.find(x=>x.id===c.id) ? clientes.map(x=>x.id===c.id?c:x) : [...clientes,c];
+    updateData({ clientes: next });
     setClienteModal(null);
   }
   function saveArticulo(a) {
-    setArticulos(prev => prev.find(x=>x.id===a.id) ? prev.map(x=>x.id===a.id?a:x) : [...prev,a]);
+    const next = articulos.find(x=>x.id===a.id) ? articulos.map(x=>x.id===a.id?a:x) : [...articulos,a];
+    updateData({ articulos: next });
     setArticuloModal(null);
   }
 
@@ -314,7 +352,7 @@ function App() {
     <div style={{ minHeight:"100vh" }}>
       <div style={{ background:"#fff", borderBottom:"1.5px solid #d0daea", padding:"0 24px", display:"flex", alignItems:"center", position:"sticky", top:0, zIndex:100, boxShadow:"0 1px 4px rgba(26,95,168,.07)" }}>
         <div style={{ display:"flex", alignItems:"center", gap:10, marginRight:32, padding:"10px 0" }}>
-          <LogoImg size={40} logoSrc={logo} onLogoChange={setLogo} />
+          <LogoImg size={40} logoSrc={logo} onLogoChange={src => updateData({ logo: src })} />
           <div>
             <div style={{ fontWeight:700, fontSize:14, color:"#1a5fa8", lineHeight:1.2 }}>Andes Graphics</div>
             <div style={{ fontSize:11, color:"#888" }}>Cotizador</div>
@@ -323,6 +361,15 @@ function App() {
         {["Cotizaciones","Clientes","Artículos"].map(t=>(
           <button key={t} className={`tab-btn${tab===t?" active":""}`} onClick={()=>{ setTab(t); setView("list"); setEditCot(null); }}>{t}</button>
         ))}
+        <div style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:8 }}>
+          {saving
+            ? <span style={{ fontSize:12, color:"#1a5fa8", display:"flex", alignItems:"center", gap:5 }}>
+                <span style={{ display:"inline-block", width:10, height:10, border:"2px solid #1a5fa8", borderTopColor:"transparent", borderRadius:"50%", animation:"spin 0.7s linear infinite" }}></span>
+                Guardando…
+              </span>
+            : <span style={{ fontSize:11, color:"#888" }}>✓ Guardado en la nube</span>
+          }
+        </div>
       </div>
 
       <div style={{ padding:"24px", maxWidth:1100, margin:"0 auto" }}>
@@ -338,13 +385,13 @@ function App() {
           <ClienteList clientes={clientes}
             onNew={()=>setClienteModal({ id:uid(), nombre:"", rut:"", contacto:"", email:"", telefono:"", direccion:"" })}
             onEdit={c=>setClienteModal({...c})}
-            onDelete={id=>{ if(confirm("¿Eliminar cliente?")) setClientes(prev=>prev.filter(x=>x.id!==id)); }} />
+            onDelete={id=>{ if(confirm("¿Eliminar cliente?")) updateData({ clientes: clientes.filter(x=>x.id!==id) }); }} />
         )}
         {tab==="Artículos" && (
           <ArticuloList articulos={articulos}
             onNew={()=>setArticuloModal({ id:uid(), nombre:"", descripcion:"", precio:0 })}
             onEdit={a=>setArticuloModal({...a})}
-            onDelete={id=>{ if(confirm("¿Eliminar artículo?")) setArticulos(prev=>prev.filter(x=>x.id!==id)); }} />
+            onDelete={id=>{ if(confirm("¿Eliminar artículo?")) updateData({ articulos: articulos.filter(x=>x.id!==id) }); }} />
         )}
       </div>
 
@@ -362,7 +409,6 @@ function App() {
   );
 }
 
-/* ─── COTIZACIÓN LIST ─── */
 function CotizacionList({ cotizaciones, onNew, onEdit, onPrint }) {
   const sorted = [...cotizaciones].sort((a,b)=>{
     const na=isNaN(Number(a.numero))?0:Number(a.numero);
@@ -404,7 +450,6 @@ function CotizacionList({ cotizaciones, onNew, onEdit, onPrint }) {
   );
 }
 
-/* ─── EDIT COTIZACIÓN ─── */
 function EditCotizacion({ cot, clientes, articulos, logoSrc, onSave, onCancel, onPrint }) {
   const [c, setC] = useState(cot);
   const set = (k,v) => setC(prev=>({...prev,[k]:v}));
@@ -421,14 +466,11 @@ function EditCotizacion({ cot, clientes, articulos, logoSrc, onSave, onCancel, o
     else setItem(itemId,"nombre",nombre);
   }
   const { neto, ivaTotal, total } = calcTotals(c.items);
-
   return (
     <div>
       <div style={{ marginBottom:20 }}>
         <h1 style={{ fontSize:22, fontWeight:600 }}>Cotización Nº {c.numero}</h1>
       </div>
-
-      {/* Encabezado */}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:16 }}>
         <div className="card">
           <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:14, paddingBottom:12, borderBottom:"1px solid #e5eaf3" }}>
@@ -465,15 +507,12 @@ function EditCotizacion({ cot, clientes, articulos, logoSrc, onSave, onCancel, o
           <input value={c.direccionEnvio} onChange={e=>set("direccionEnvio",e.target.value)} placeholder="Dirección de despacho" />
         </div>
       </div>
-
-      {/* Ítems */}
       <div className="card" style={{ marginBottom:16, padding:0, overflow:"hidden" }}>
         <div style={{ padding:"14px 16px 0", fontWeight:600, fontSize:14, color:"#1a5fa8" }}>Ítems</div>
         <div style={{ overflowX:"auto" }}>
           <table style={{ width:"100%", minWidth:800 }}>
             <thead><tr>
-              <th style={{ width:64 }}>Cant.</th>
-              <th style={{ width:160 }}>Artículo</th>
+              <th style={{ width:64 }}>Cant.</th><th style={{ width:160 }}>Artículo</th>
               <th>Descripción / Esp. proveedor</th>
               <th style={{ width:120, textAlign:"right" }}>P. Unit.</th>
               <th style={{ width:56, textAlign:"center" }}>IVA</th>
@@ -492,7 +531,7 @@ function EditCotizacion({ cot, clientes, articulos, logoSrc, onSave, onCancel, o
                   </select>
                   <input value={it.nombre} onChange={e=>setItem(it.id,"nombre",e.target.value)} placeholder="Nombre libre" style={{ fontSize:12 }} />
                 </td>
-                <td><textarea value={it.descripcion} onChange={e=>setItem(it.id,"descripcion",e.target.value)} rows={2} style={{ resize:"vertical", minHeight:48 }} placeholder="Descripción o especificación técnica del proveedor" /></td>
+                <td><textarea value={it.descripcion} onChange={e=>setItem(it.id,"descripcion",e.target.value)} rows={2} style={{ resize:"vertical", minHeight:48 }} placeholder="Descripción o especificación técnica" /></td>
                 <td><input type="number" min="0" value={it.precio} onChange={e=>setItem(it.id,"precio",Number(e.target.value))} style={{ textAlign:"right" }} /></td>
                 <td style={{ textAlign:"center" }}><input type="checkbox" checked={it.iva} onChange={e=>setItem(it.id,"iva",e.target.checked)} style={{ width:"auto", cursor:"pointer" }} /></td>
                 <td style={{ fontWeight:600, textAlign:"right", color:"#1a5fa8" }}>{fmtCLP(tot)}</td>
@@ -510,8 +549,6 @@ function EditCotizacion({ cot, clientes, articulos, logoSrc, onSave, onCancel, o
           </div>
         </div>
       </div>
-
-      {/* Notas y bancarios */}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
         <div className="card">
           <label style={{ fontWeight:600, fontSize:13, color:"#1a5fa8", marginBottom:8, display:"block" }}>Datos bancarios</label>
@@ -522,7 +559,6 @@ function EditCotizacion({ cot, clientes, articulos, logoSrc, onSave, onCancel, o
           <textarea value={c.notaPie} onChange={e=>set("notaPie",e.target.value)} rows={5} style={{ resize:"vertical" }} />
         </div>
       </div>
-
       <div className="action-bar">
         <button className="btn-outline" onClick={onCancel}>Cancelar</button>
         <button className="btn-outline" onClick={()=>onPrint(c)}>⬇ Descargar PDF</button>
@@ -532,7 +568,6 @@ function EditCotizacion({ cot, clientes, articulos, logoSrc, onSave, onCancel, o
   );
 }
 
-/* ─── CLIENTES ─── */
 function ClienteList({ clientes, onNew, onEdit, onDelete }) {
   return (
     <div>
@@ -580,7 +615,6 @@ function ClienteForm({ c, onChange, onSave, onCancel }) {
   );
 }
 
-/* ─── ARTÍCULOS ─── */
 function ArticuloList({ articulos, onNew, onEdit, onDelete }) {
   return (
     <div>
