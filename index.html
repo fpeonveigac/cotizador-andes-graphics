@@ -116,7 +116,7 @@ const EMPRESA = {
   direccion: "Av Pacífico 640, Serena Golf, La Serena",
   email: "andesgraph@gmail.com",
   telefono: "+56 9 9047 2411",
-  banco: "Andes Graphics SpA · RUT 77.714.322-0\nCta Cte Nº 464724193 · Banco de Chile\nandesgraph@gmail.com",
+  banco: "Andes Graphics SpA\n77.958.663-4\nCta n° 90274210680\nBanco Estado\nChequera Electrónica\nandesgraph@gmail.com",
 };
 
 const fmtCLP = n => "$" + Math.round(Number(n) || 0).toLocaleString("es-CL");
@@ -187,9 +187,8 @@ function renderPrint(cot, logoSrc) {
       <thead>
         <tr style="background:#1a5fa8;color:white">
           <th style="padding:9px 10px;text-align:left;width:44px;font-weight:600">Nº</th>
-          <th style="padding:9px 10px;text-align:left;width:100px;font-weight:600">Código</th>
+          <th style="padding:9px 10px;text-align:left;width:160px;font-weight:600">Nombre</th>
           <th style="padding:9px 10px;text-align:left;font-weight:600">Descripción</th>
-          <th style="padding:9px 10px;text-align:left;font-weight:600">Esp. del Proveedor</th>
           <th style="padding:9px 10px;text-align:center;width:60px;font-weight:600">Cant.</th>
           <th style="padding:9px 10px;text-align:right;width:96px;font-weight:600">P. Unitario</th>
           <th style="padding:9px 10px;text-align:right;width:96px;font-weight:600">Subtotal</th>
@@ -200,9 +199,8 @@ function renderPrint(cot, logoSrc) {
           const sub=(Number(it.cantidad)||0)*(Number(it.precio)||0);
           return `<tr style="background:${i%2===0?"#fff":"#f5f8fd"};border-bottom:1px solid #e5eaf3">
             <td style="padding:9px 10px;color:#888">${i+1}</td>
-            <td style="padding:9px 10px;color:#555">${it.codigo||"—"}</td>
-            <td style="padding:9px 10px;font-weight:600">${it.nombre}${it.descripcion?`<div style="font-weight:400;color:#555;font-size:10px;margin-top:3px">${it.descripcion}</div>`:""}</td>
-            <td style="padding:9px 10px;color:#444;font-size:10px">${it.especificacion||it.descripcion||"—"}</td>
+            <td style="padding:9px 10px;font-weight:600">${it.nombre}</td>
+            <td style="padding:9px 10px;color:#444">${it.descripcion||"—"}</td>
             <td style="padding:9px 10px;text-align:center">${it.cantidad}</td>
             <td style="padding:9px 10px;text-align:right">${fmtCLP(it.precio)}</td>
             <td style="padding:9px 10px;text-align:right;font-weight:600">${fmtCLP(sub)}</td>
