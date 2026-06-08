@@ -215,15 +215,24 @@ function renderPrint(cot, logoSrc) {
         <tr><td style="padding:9px 16px;text-align:right;font-weight:700;font-size:13px;background:#f0f4fa">TOTAL:</td><td style="padding:9px 16px;text-align:right;font-weight:700;font-size:13px;background:#f0f4fa;color:#1a5fa8">${fmtCLP(total)}</td></tr>
       </table>
     </div>
-    ${(cot.notaPie||cot.bancarios)?`
-    <div style="background:#fdf3c0;border:1px solid #f0d060;border-radius:8px;padding:12px 16px;margin-top:4px">
-      <div style="font-weight:700;font-size:11px;color:#7a6000;margin-bottom:5px">Observaciones:</div>
-      <div style="font-size:11px;color:#444;line-height:1.6">
-        ${cot.notaPie?cot.notaPie.replace(/\n/g,"<br/>"):""}
-        ${cot.notaPie&&cot.bancarios?" · ":""}
-        ${cot.bancarios?`Datos bancarios: ${cot.bancarios.replace(/\n/g," · ")}`:""}
+    <div style="display:grid;grid-template-columns:1fr 2fr;gap:14px;margin-top:4px">
+      <div style="border:1px solid #b8cce8;border-radius:8px;padding:12px 16px;background:#dce8f5">
+        <div style="font-weight:700;font-size:10px;color:#444;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">Datos bancarios</div>
+        <div style="font-size:11px;color:#333;line-height:1.9">
+          Andes Graphics SpA<br/>
+          RUT 77.958.663-4<br/>
+          Cta Nº 90274210680<br/>
+          Chequera Electrónica<br/>
+          Banco Estado<br/>
+          andesgraph@gmail.com
+        </div>
       </div>
-    </div>`:""}
+      ${cot.notaPie ? `
+      <div style="border:1px solid #f0d060;border-radius:8px;padding:12px 16px;background:#fdf3c0">
+        <div style="font-weight:700;font-size:10px;color:#7a6000;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">Observaciones / Nota al pie</div>
+        <div style="font-size:11px;color:#444;line-height:1.6">${cot.notaPie.replace(/\n/g,"<br/>")}</div>
+      </div>` : "<div></div>"}
+    </div>
     <div style="margin-top:20px;padding-top:10px;border-top:1px solid #dde5f0;font-size:9px;color:#aaa;text-align:right">
       Página 1 de 1 · ${EMPRESA.nombre} · ${EMPRESA.rut}
     </div>
