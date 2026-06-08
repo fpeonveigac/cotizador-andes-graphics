@@ -96,7 +96,7 @@
     body > #root > * { display: none !important; }
     #print-area { display: block !important; position: absolute; top: 0; left: 0; width: 100%; background: white; z-index: 9999; }
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    @page { margin: 10mm; size: A4; }
+    @page { margin: 8mm; size: A4; }
   }
   #print-area { display: none; }
   ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #eef2fa; } ::-webkit-scrollbar-thumb { background: #a8bcda; border-radius: 3px; }
@@ -142,7 +142,7 @@ function renderPrint(cot, logoSrc) {
   const infoCell = (label, value) => `<div style="min-width:140px"><span style="${sectionLabel}">${label}</span><span style="${sectionValue}">${value || "—"}</span></div>`;
   const el = document.getElementById("print-area");
   el.innerHTML = `
-  <div style="font-family:'Segoe UI',Arial,sans-serif;font-size:12px;padding:24px 36px;color:#1a1a1a;background:#fff;max-width:860px;margin:0 auto">
+  <div style="font-family:'Segoe UI',Arial,sans-serif;font-size:12px;padding:16px 28px;color:#1a1a1a;background:#fff;max-width:860px;margin:0 auto">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:14px;border-bottom:2px solid #1a5fa8;margin-bottom:6px">
       <div style="display:flex;align-items:center;gap:14px">
         ${logoSrc ? `<img src="${logoSrc}" style="width:64px;height:64px;object-fit:contain"/>` : `<div style="width:64px;height:64px;background:#1a5fa8;border-radius:8px;display:flex;align-items:center;justify-content:center"><span style="color:white;font-weight:bold;font-size:11px">AG</span></div>`}
@@ -233,7 +233,7 @@ function renderPrint(cot, logoSrc) {
         <div style="font-size:11px;color:#444;line-height:1.6">${cot.notaPie.replace(/\n/g,"<br/>")}</div>
       </div>` : "<div></div>"}
     </div>
-    <div style="margin-top:20px;padding-top:10px;border-top:1px solid #dde5f0;font-size:9px;color:#aaa;text-align:right">
+    <div style="margin-top:16px;padding-top:8px;border-top:1px solid #dde5f0;font-size:9px;color:#aaa;text-align:right;page-break-inside:avoid">
       Página 1 de 1 · ${EMPRESA.nombre} · ${EMPRESA.rut}
     </div>
   </div>`;
