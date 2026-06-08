@@ -94,8 +94,9 @@
   @keyframes spin { to { transform: rotate(360deg); } }
   @media print {
     body > #root > * { display: none !important; }
-    #print-area { display: block !important; position: fixed; top: 0; left: 0; width: 100%; background: white; z-index: 9999; }
+    #print-area { display: block !important; position: absolute; top: 0; left: 0; width: 100%; background: white; z-index: 9999; }
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    @page { margin: 10mm; size: A4; }
   }
   #print-area { display: none; }
   ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #eef2fa; } ::-webkit-scrollbar-thumb { background: #a8bcda; border-radius: 3px; }
