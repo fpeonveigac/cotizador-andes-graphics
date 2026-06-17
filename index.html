@@ -4,11 +4,10 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Cotizador · Andes Graphics SpA</title>
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-  const firebaseConfig = {
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+  var firebaseConfig = {
     apiKey: "AIzaSyDn7qthU4vuCQ3Qwrx53iM1Z9cJE4FexHE",
     authDomain: "cotizador-andes-graphics.firebaseapp.com",
     projectId: "cotizador-andes-graphics",
@@ -17,10 +16,10 @@
     appId: "1:483081607158:web:634d0c092ff1443f6e19d7"
   };
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+  firebase.initializeApp(firebaseConfig);
+  var db = firebase.firestore();
 
-  const ARTICULOS_DEFAULT = [
+  var ARTICULOS_DEFAULT = [
     { id:1, nombre:"Adhesivo PVC", descripcion:"Adhesivo PVC blackout mate impreso en alta resolución, incluye laminado", precio:7000 },
     { id:2, nombre:"Bandera tela", descripcion:"Bandera tela 60x60 cm con costuras y argollas", precio:25000 },
     { id:3, nombre:"Letrero acrílico", descripcion:"Letrero acrílico 3mm 80x100 cm, impreso en vinilo adhesivo", precio:49000 },
@@ -30,8 +29,8 @@
 
   async function loadData() {
     try {
-      const snap = await getDoc(doc(db, "datos", "principal"));
-      if (snap.exists()) return snap.data();
+      var snap = await db.collection("datos").doc("principal").get();
+      if (snap.exists) return snap.data();
       return { clientes:[], articulos:ARTICULOS_DEFAULT, cotizaciones:[], logo:null };
     } catch(e) {
       console.error("Error cargando datos:", e);
@@ -41,7 +40,7 @@
 
   async function saveData(data) {
     try {
-      await setDoc(doc(db, "datos", "principal"), data);
+      await db.collection("datos").doc("principal").set(data);
       return true;
     } catch(e) {
       console.error("Error guardando:", e);
@@ -49,7 +48,7 @@
     }
   }
 
-  window.__firebase = { loadData, saveData };
+  window.__firebase = { loadData: loadData, saveData: saveData };
 </script>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
