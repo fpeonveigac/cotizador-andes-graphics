@@ -105,9 +105,25 @@
 <div id="root"></div>
 <div id="print-area"></div>
 
-<script type="text/babel" data-presets="react" data-type="script">
-/* @jsxRuntime classic */
-/* @jsx React.createElement */
+<script>
+  // Configurar Babel para usar runtime clásico (sin imports automáticos)
+  window.addEventListener('DOMContentLoaded', function() {
+    var babelScript = document.getElementById('app-code');
+    if (!babelScript || !window.Babel) return;
+    try {
+      var compiled = Babel.transform(babelScript.textContent, {
+        presets: [['react', { runtime: 'classic' }]]
+      }).code;
+      var s = document.createElement('script');
+      s.textContent = compiled;
+      document.body.appendChild(s);
+    } catch(e) {
+      console.error('Error compilando la app:', e);
+      document.getElementById('root').innerHTML = '<div style="padding:40px;text-align:center;font-family:sans-serif;color:#e24b4a">Error al cargar la app: ' + e.message + '</div>';
+    }
+  });
+</script>
+<script type="text/plain" id="app-code">
 const { useState, useRef, useCallback, useEffect } = React;
 
 const IVA_RATE = 0.19;
