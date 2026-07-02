@@ -6,6 +6,7 @@
 <title>Cotizador · Andes Graphics SpA</title>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script>
   var firebaseConfig = {
     apiKey: "AIzaSyDn7qthU4vuCQ3Qwrx53iM1Z9cJE4FexHE",
@@ -16,8 +17,11 @@
     appId: "1:483081607158:web:634d0c092ff1443f6e19d7"
   };
 
+  var EMAILS_AUTORIZADOS = ["fpeonveigac@gmail.com", "andesgraph@gmail.com"];
+
   firebase.initializeApp(firebaseConfig);
   var db = firebase.firestore();
+  var auth = firebase.auth();
 
   var ARTICULOS_DEFAULT = [
     { id:1, nombre:"Adhesivo PVC", descripcion:"Adhesivo PVC blackout mate impreso en alta resolución, incluye laminado", precio:7000 },
@@ -48,7 +52,30 @@
     }
   }
 
-  window.__firebase = { loadData: loadData, saveData: saveData };
+  async function loginGoogle() {
+    var provider = new firebase.auth.GoogleAuthProvider();
+    try {
+      var result = await auth.signInWithPopup(provider);
+      if (EMAILS_AUTORIZADOS.indexOf(result.user.email) === -1) {
+        await auth.signOut();
+        return { error: "Esta cuenta no está autorizada para acceder a la aplicación." };
+      }
+      return { user: result.user };
+    } catch(e) {
+      return { error: e.message };
+    }
+  }
+
+  async function logout() { await auth.signOut(); }
+
+  function onAuthChange(cb) {
+    auth.onAuthStateChanged(function(user) {
+      if (user && EMAILS_AUTORIZADOS.indexOf(user.email) !== -1) cb(user);
+      else cb(null);
+    });
+  }
+
+  window.__firebase = { loadData: loadData, saveData: saveData, loginGoogle: loginGoogle, logout: logout, onAuthChange: onAuthChange };
 </script>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -297,37 +324,71 @@ function LogoImg({ size=48, logoSrc, onLogoChange, style={} }) {
 }
 
 function App() {
+  const [authChecked, setAuthChecked] = useState(false);
+  const [user, setUser] = useState(null);
+  const [loginError, setLoginError] = useState(null);
   const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    async function load() {
-      const wait = ms => new Promise(r => setTimeout(r, ms));
-      let tries = 0;
-      while (!window.__firebase && tries < 20) { await wait(200); tries++; }
-      if (!window.__firebase) { setError("No se pudo conectar con Firebase. Verifica tu conexión a internet."); setLoading(false); return; }
-      const d = await window.__firebase.loadData();
-      setData(d);
-      setLoading(false);
-    }
-    load();
+  useEffect(function() {
+    window.__firebase.onAuthChange(function(u) {
+      setUser(u);
+      setAuthChecked(true);
+    });
   }, []);
 
+  useEffect(function() {
+    if (!user) { setData(null); return; }
+    setLoading(true);
+    window.__firebase.loadData().then(function(d) { setData(d); setLoading(false); });
+  }, [user]);
+
+  async function handleLogin() {
+    setLoginError(null);
+    var res = await window.__firebase.loginGoogle();
+    if (res.error) setLoginError(res.error);
+  }
+
   async function updateData(patch) {
-    const next = { ...data, ...patch };
+    const next = Object.assign({}, data, patch);
     setData(next);
     setSaving(true);
     await window.__firebase.saveData(next);
     setSaving(false);
   }
 
-  if (loading) return (
+  // Esperando verificación de sesión
+  if (!authChecked) return (
     <div className="loading-screen">
-      <div style={{ width:48, height:48, background:"#1a5fa8", borderRadius:12, display:"flex", alignItems:"center", justifyContent:"center" }}>
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" stroke="white" strokeWidth="1.8"/></svg>
+      <div style={{ display:"flex", alignItems:"center", gap:10, color:"#1a5fa8", fontSize:15, fontWeight:500 }}>
+        <span style={{ display:"inline-block", width:18, height:18, border:"2.5px solid #1a5fa8", borderTopColor:"transparent", borderRadius:"50%", animation:"spin 0.7s linear infinite" }}></span>
+        Verificando sesión…
       </div>
+    </div>
+  );
+
+  // Pantalla de login
+  if (!user) return (
+    <div className="loading-screen">
+      <div style={{ background:"#fff", borderRadius:16, padding:40, maxWidth:400, width:"100%", textAlign:"center", border:"1px solid #d0daea", boxShadow:"0 4px 24px rgba(26,95,168,.08)" }}>
+        <div style={{ width:64, height:64, background:"#1a5fa8", borderRadius:14, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 20px" }}>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" stroke="white" strokeWidth="1.8"/></svg>
+        </div>
+        <h1 style={{ fontSize:22, fontWeight:700, color:"#1a5fa8", marginBottom:8 }}>Cotizador Andes Graphics</h1>
+        <p style={{ fontSize:14, color:"#666", marginBottom:24 }}>Inicia sesión para acceder a tus cotizaciones.</p>
+        <button className="btn-blue" style={{ fontSize:15, padding:"12px 24px", width:"100%", display:"flex", alignItems:"center", justifyContent:"center", gap:10 }} onClick={handleLogin}>
+          <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#fff" d="M12 11v2h5.5c-.2 1.2-1.5 3.5-5.5 3.5-3.3 0-6-2.7-6-6s2.7-6 6-6c1.9 0 3.1.8 3.9 1.5l2-2C16.5 2.3 14.5 1.5 12 1.5 6.8 1.5 2.5 5.8 2.5 11S6.8 20.5 12 20.5c5.5 0 9.1-3.9 9.1-9.3 0-.6-.1-1.1-.2-1.2H12z"/></svg>
+          Iniciar sesión con Google
+        </button>
+        {loginError && <p style={{ marginTop:16, fontSize:13, color:"#e24b4a" }}>{loginError}</p>}
+      </div>
+    </div>
+  );
+
+  // Cargando datos
+  if (loading || !data) return (
+    <div className="loading-screen">
       <div style={{ display:"flex", alignItems:"center", gap:10, color:"#1a5fa8", fontSize:15, fontWeight:500 }}>
         <span style={{ display:"inline-block", width:18, height:18, border:"2.5px solid #1a5fa8", borderTopColor:"transparent", borderRadius:"50%", animation:"spin 0.7s linear infinite" }}></span>
         Cargando datos…
@@ -335,21 +396,11 @@ function App() {
     </div>
   );
 
-  if (error) return (
-    <div className="loading-screen">
-      <div style={{ background:"#fff", borderRadius:14, padding:32, maxWidth:400, textAlign:"center", border:"1px solid #d0daea" }}>
-        <div style={{ fontSize:36, marginBottom:12 }}>⚠️</div>
-        <div style={{ fontWeight:600, marginBottom:8 }}>Error de conexión</div>
-        <div style={{ fontSize:13, color:"#666", marginBottom:20 }}>{error}</div>
-        <button className="btn-blue" onClick={() => window.location.reload()}>Reintentar</button>
-      </div>
-    </div>
-  );
-
-  return <MainApp data={data} updateData={updateData} saving={saving} />;
+  return <MainApp data={data} updateData={updateData} saving={saving} onLogout={function(){ window.__firebase.logout(); }} />;
 }
 
-function MainApp({ data, updateData, saving }) {
+function MainApp({ data, updateData, saving, onLogout }) {
+  const props = { onLogout };
   const [tab, setTab] = useState("Cotizaciones");
   const [view, setView] = useState("list");
   const [editCot, setEditCot] = useState(null);
@@ -397,7 +448,7 @@ function MainApp({ data, updateData, saving }) {
         {["Cotizaciones","Clientes","Artículos"].map(t=>(
           <button key={t} className={`tab-btn${tab===t?" active":""}`} onClick={()=>{ setTab(t); setView("list"); setEditCot(null); }}>{t}</button>
         ))}
-        <div style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:8 }}>
+        <div style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:12 }}>
           {saving
             ? <span style={{ fontSize:12, color:"#1a5fa8", display:"flex", alignItems:"center", gap:5 }}>
                 <span style={{ display:"inline-block", width:10, height:10, border:"2px solid #1a5fa8", borderTopColor:"transparent", borderRadius:"50%", animation:"spin 0.7s linear infinite" }}></span>
@@ -405,6 +456,7 @@ function MainApp({ data, updateData, saving }) {
               </span>
             : <span style={{ fontSize:11, color:"#888" }}>✓ Guardado en la nube</span>
           }
+          <button className="btn-outline" style={{ fontSize:12, padding:"5px 12px" }} onClick={props.onLogout}>Cerrar sesión</button>
         </div>
       </div>
 
