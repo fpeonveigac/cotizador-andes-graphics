@@ -83,7 +83,7 @@
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; background: #f0f4fa; color: #1a1a1a; min-height: 100vh; }
-  .tab-btn { padding: 10px 20px; border: none; background: transparent; cursor: pointer; font-size: 14px; color: #555; border-bottom: 2px solid transparent; transition: all .15s; }
+  .tab-btn { padding: 10px 20px; border: none; background: transparent; cursor: pointer; font-size: 14px; color: #555; border-bottom: 2px solid transparent; }
   .tab-btn.active { color: #1a5fa8; border-bottom-color: #1a5fa8; font-weight: 600; }
   .tab-btn:hover:not(.active) { color: #111; }
   .btn-blue { background: #1a5fa8; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; }
@@ -102,18 +102,6 @@
   th { font-size: 12px; color: #555; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; padding: 8px 12px; border-bottom: 1.5px solid #c8d4e8; background: #f0f4fa; }
   td { font-size: 13px; padding: 10px 12px; border-bottom: 1px solid #e5eaf3; }
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
-  @media (max-width: 640px) {
-    .desktop-col { display: none !important; }
-    .mobile-card-row { display: block !important; }
-    .table-scroll { overflow-x: auto; }
-  }
-  @media (min-width: 641px) {
-    .mobile-card-row { display: none !important; }
-  }
-  .mobile-card-row { background: #fff; border-bottom: 1px solid #e5eaf3; padding: 12px; }
-  .mobile-card-row .mc-title { font-weight: 600; font-size: 14px; color: #1a1a1a; margin-bottom: 2px; }
-  .mobile-card-row .mc-sub { font-size: 12px; color: #666; margin-bottom: 6px; }
-  .mobile-card-row .mc-actions { display: flex; gap: 8px; margin-top: 8px; }
   .modal-box { background: #fff; border-radius: 14px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 40px rgba(0,0,0,0.18); }
   .action-bar { background: #fff; border-top: 1.5px solid #d0daea; padding: 16px 24px; display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; border-radius: 12px; }
   .loading-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px; }
@@ -125,31 +113,22 @@
     @page { margin: 8mm; size: A4; }
   }
   #print-area { display: none; }
-  ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #eef2fa; } ::-webkit-scrollbar-thumb { background: #a8bcda; border-radius: 3px; }
+  @media (max-width: 640px) {
+    .desktop-col { display: none !important; }
+    .mobile-card-row { display: block !important; }
+  }
+  @media (min-width: 641px) { .mobile-card-row { display: none !important; } }
+  .mobile-card-row { background: #fff; border-bottom: 1px solid #e5eaf3; padding: 12px; }
+  .mobile-card-row .mc-title { font-weight: 600; font-size: 14px; margin-bottom: 2px; }
+  .mobile-card-row .mc-sub { font-size: 12px; color: #666; margin-bottom: 6px; }
+  .mobile-card-row .mc-actions { display: flex; gap: 8px; margin-top: 8px; }
 </style>
 </head>
 <body>
 <div id="root"></div>
 <div id="print-area"></div>
 
-<script>
-  window.addEventListener('DOMContentLoaded', function() {
-    var babelScript = document.getElementById('app-code');
-    if (!babelScript || !window.Babel) return;
-    try {
-      var compiled = Babel.transform(babelScript.textContent, {
-        presets: ['react']
-      }).code;
-      var s = document.createElement('script');
-      s.textContent = compiled;
-      document.body.appendChild(s);
-    } catch(e) {
-      console.error('Error compilando la app:', e);
-      document.getElementById('root').innerHTML = '<div style="padding:40px;text-align:center;font-family:sans-serif;color:#e24b4a">Error al cargar la app: ' + e.message + '</div>';
-    }
-  });
-</script>
-<script type="text/plain" id="app-code">
+<script type="text/babel" data-presets="react">
 const { useState, useRef, useCallback, useEffect } = React;
 
 const IVA_RATE = 0.19;
@@ -159,8 +138,8 @@ const EMPRESA = {
   direccion: "Av Pacífico 640, Serena Golf, La Serena",
   email: "andesgraph@gmail.com",
   telefono: "+56 9 9047 2411",
-  banco: "Andes Graphics SpA\n77.958.663-4\nCta n° 90274210680\nBanco Estado\nChequera Electrónica\nandesgraph@gmail.com",
 };
+const BANCO_FIJO = ["Andes Graphics SpA","RUT 77.958.663-4","Cta Nº 90274210680","Chequera Electrónica","Banco Estado","andesgraph@gmail.com"];
 
 const fmtCLP = n => "$" + Math.round(Number(n) || 0).toLocaleString("es-CL");
 const today = () => new Date().toISOString().split("T")[0];
@@ -177,148 +156,115 @@ function calcTotals(items) {
 }
 
 function renderPrint(cot, logoSrc) {
-  const { neto, ivaTotal, total } = calcTotals(cot.items);
+  const t = calcTotals(cot.items);
   const prevTitle = document.title;
-  document.title = `${cot.numero} - ${cot.cliente?.nombre || "sin-cliente"}`;
-  const sectionLabel = `font-size:9px;color:#555;font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:3px;display:block;`;
-  const sectionValue = `font-size:12px;color:#1a1a1a;`;
-  const infoCell = (label, value) => `<div style="min-width:140px"><span style="${sectionLabel}">${label}</span><span style="${sectionValue}">${value || "—"}</span></div>`;
+  document.title = cot.numero + " - " + (cot.cliente ? cot.cliente.nombre : "sin-cliente");
+  const lbl = "font-size:9px;color:#555;font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:3px;display:block;";
+  const val = "font-size:12px;color:#1a1a1a;";
+  const cell = (l,v) => v ? '<div style="min-width:140px"><span style="'+lbl+'">'+l+'</span><span style="'+val+'">'+v+'</span></div>' : '';
+  const cellAlways = (l,v) => '<div style="min-width:140px"><span style="'+lbl+'">'+l+'</span><span style="'+val+'">'+(v||"—")+'</span></div>';
   const el = document.getElementById("print-area");
-  el.innerHTML = `
-  <div style="font-family:'Segoe UI',Arial,sans-serif;font-size:12px;padding:16px 28px;color:#1a1a1a;background:#fff;max-width:860px;margin:0 auto">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:14px;border-bottom:2px solid #1a5fa8;margin-bottom:6px">
-      <div style="display:flex;align-items:center;gap:14px">
-        ${logoSrc ? `<img src="${logoSrc}" style="width:64px;height:64px;object-fit:contain"/>` : `<div style="width:64px;height:64px;background:#1a5fa8;border-radius:8px;display:flex;align-items:center;justify-content:center"><span style="color:white;font-weight:bold;font-size:11px">AG</span></div>`}
-        <div>
-          <div style="font-size:15px;font-weight:700;color:#1a1a1a">${EMPRESA.nombre}</div>
-          <div style="font-size:10px;color:#666;margin-top:2px">RUT: ${EMPRESA.rut}</div>
-          <div style="font-size:10px;color:#666">${EMPRESA.direccion}</div>
-        </div>
-      </div>
-      <div style="text-align:right">
-        <div style="font-size:10px;color:#888">Nº Cotización: ${cot.numero}</div>
-        <div style="font-size:10px;color:#888">Fecha: ${cot.fecha}</div>
-        <div style="font-size:10px;color:#888">Condición de pago: ${cot.condicionPago}</div>
-      </div>
-    </div>
-    <div style="margin:16px 0 14px">
-      <span style="font-size:18px;font-weight:700;color:#1a5fa8;text-transform:uppercase;border-bottom:3px solid #e8a020;padding-bottom:4px">COTIZACIÓN</span>
-    </div>
-    <div style="border:1px solid #b8cce8;border-radius:8px;padding:14px 18px;margin-bottom:12px;background:#dce8f5">
-      <div style="font-size:10px;font-weight:700;color:#444;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">Datos del Proveedor</div>
-      <div style="display:flex;flex-wrap:wrap;gap:12px 32px">
-        ${infoCell("Empresa", EMPRESA.nombre)}
-        ${infoCell("RUT", EMPRESA.rut)}
-        ${infoCell("Responsable", cot.responsable || "—")}
-        ${infoCell("Email", EMPRESA.email)}
-        ${infoCell("Teléfono", EMPRESA.telefono)}
-      </div>
-    </div>
-    ${cot.cliente ? `
-    <div style="border:1px solid #b8cce8;border-radius:8px;padding:14px 18px;margin-bottom:12px;background:#dce8f5">
-      <div style="font-size:10px;font-weight:700;color:#444;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">Datos del Cliente</div>
-      <div style="display:flex;flex-wrap:wrap;gap:12px 32px">
-        ${infoCell("Empresa", cot.cliente.nombre)}
-        ${infoCell("RUT", cot.cliente.rut)}
-        ${infoCell("Contacto", cot.cliente.contacto)}
-        ${infoCell("Email", cot.cliente.email)}
-        ${infoCell("Teléfono", cot.cliente.telefono)}
-        ${infoCell("Dirección", cot.direccionEnvio || cot.cliente.direccion)}
-      </div>
-    </div>` : ""}
-    <table style="width:100%;border-collapse:collapse;margin-bottom:0;font-size:11px">
-      <thead>
-        <tr style="background:#1a5fa8;color:white">
-          <th style="padding:9px 10px;text-align:left;width:44px;font-weight:600">Nº</th>
-          <th style="padding:9px 10px;text-align:left;width:160px;font-weight:600">Nombre</th>
-          <th style="padding:9px 10px;text-align:left;font-weight:600">Descripción</th>
-          <th style="padding:9px 10px;text-align:center;width:60px;font-weight:600">Cant.</th>
-          <th style="padding:9px 10px;text-align:right;width:96px;font-weight:600">P. Unitario</th>
-          <th style="padding:9px 10px;text-align:right;width:96px;font-weight:600">Subtotal</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${(cot.items||[]).map((it,i)=>{
-          const sub=(Number(it.cantidad)||0)*(Number(it.precio)||0);
-          return `<tr style="background:${i%2===0?"#fff":"#f5f8fd"};border-bottom:1px solid #e5eaf3">
-            <td style="padding:9px 10px;color:#888">${i+1}</td>
-            <td style="padding:9px 10px;font-weight:600">${it.nombre}</td>
-            <td style="padding:9px 10px;color:#444">${it.descripcion||"—"}</td>
-            <td style="padding:9px 10px;text-align:center">${it.cantidad}</td>
-            <td style="padding:9px 10px;text-align:right">${fmtCLP(it.precio)}</td>
-            <td style="padding:9px 10px;text-align:right;font-weight:600">${fmtCLP(sub)}</td>
-          </tr>`;
-        }).join("")}
-      </tbody>
-    </table>
-    <div style="display:flex;justify-content:flex-end;margin:0 0 14px">
-      <table style="border-collapse:collapse;min-width:260px;font-size:12px;border:1px solid #dde5f0;border-top:none">
-        <tr style="border-bottom:1px solid #dde5f0"><td style="padding:7px 16px;text-align:right;color:#555;background:#f8fafc">Subtotal:</td><td style="padding:7px 16px;text-align:right;background:#fff">${fmtCLP(neto)}</td></tr>
-        <tr style="border-bottom:1px solid #dde5f0"><td style="padding:7px 16px;text-align:right;color:#555;background:#f8fafc">IVA (19%):</td><td style="padding:7px 16px;text-align:right;background:#fff">${fmtCLP(ivaTotal)}</td></tr>
-        <tr><td style="padding:9px 16px;text-align:right;font-weight:700;font-size:13px;background:#f0f4fa">TOTAL:</td><td style="padding:9px 16px;text-align:right;font-weight:700;font-size:13px;background:#f0f4fa;color:#1a5fa8">${fmtCLP(total)}</td></tr>
-      </table>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 2fr;gap:14px;margin-top:4px">
-      <div style="border:1px solid #b8cce8;border-radius:8px;padding:12px 16px;background:#dce8f5">
-        <div style="font-weight:700;font-size:10px;color:#444;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">Datos bancarios</div>
-        <div style="font-size:11px;color:#333;line-height:1.9">
-          Andes Graphics SpA<br/>
-          RUT 77.958.663-4<br/>
-          Cta Nº 90274210680<br/>
-          Chequera Electrónica<br/>
-          Banco Estado<br/>
-          andesgraph@gmail.com
-        </div>
-      </div>
-      ${cot.notaPie ? `
-      <div style="border:1px solid #f0d060;border-radius:8px;padding:12px 16px;background:#fdf3c0">
-        <div style="font-weight:700;font-size:10px;color:#7a6000;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">Observaciones / Nota al pie</div>
-        <div style="font-size:11px;color:#444;line-height:1.6">${cot.notaPie.replace(/\n/g,"<br/>")}</div>
-      </div>` : "<div></div>"}
-    </div>
-    <div style="margin-top:16px;padding-top:8px;border-top:1px solid #dde5f0;font-size:9px;color:#aaa;text-align:right;page-break-inside:avoid">
-      Página 1 de 1 · ${EMPRESA.nombre} · ${EMPRESA.rut}
-    </div>
-  </div>`;
+  el.innerHTML =
+  '<div style="font-family:Segoe UI,Arial,sans-serif;font-size:12px;padding:16px 28px;color:#1a1a1a;background:#fff;max-width:860px;margin:0 auto">'+
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:14px;border-bottom:2px solid #1a5fa8;margin-bottom:6px">'+
+      '<div style="display:flex;align-items:center;gap:14px">'+
+        (logoSrc ? '<img src="'+logoSrc+'" style="width:64px;height:64px;object-fit:contain"/>' : '<div style="width:64px;height:64px;background:#1a5fa8;border-radius:8px"></div>')+
+        '<div><div style="font-size:15px;font-weight:700">'+EMPRESA.nombre+'</div>'+
+        '<div style="font-size:10px;color:#666;margin-top:2px">RUT: '+EMPRESA.rut+'</div>'+
+        '<div style="font-size:10px;color:#666">'+EMPRESA.direccion+'</div></div>'+
+      '</div>'+
+      '<div style="text-align:right">'+
+        '<div style="font-size:10px;color:#888">Nº Cotización: '+cot.numero+'</div>'+
+        '<div style="font-size:10px;color:#888">Fecha: '+cot.fecha+'</div>'+
+        '<div style="font-size:10px;color:#888">Condición de pago: '+cot.condicionPago+'</div>'+
+      '</div>'+
+    '</div>'+
+    '<div style="margin:16px 0 14px"><span style="font-size:18px;font-weight:700;color:#1a5fa8;text-transform:uppercase;border-bottom:3px solid #e8a020;padding-bottom:4px">COTIZACIÓN</span></div>'+
+    '<div style="border:1px solid #b8cce8;border-radius:8px;padding:14px 18px;margin-bottom:12px;background:#dce8f5">'+
+      '<div style="font-size:10px;font-weight:700;color:#444;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">Datos del Proveedor</div>'+
+      '<div style="display:flex;flex-wrap:wrap;gap:12px 32px">'+cellAlways("Empresa",EMPRESA.nombre)+cellAlways("RUT",EMPRESA.rut)+cellAlways("Responsable",cot.responsable)+cellAlways("Email",EMPRESA.email)+cellAlways("Teléfono",EMPRESA.telefono)+'</div>'+
+    '</div>'+
+    (cot.cliente ?
+    '<div style="border:1px solid #b8cce8;border-radius:8px;padding:14px 18px;margin-bottom:12px;background:#dce8f5">'+
+      '<div style="font-size:10px;font-weight:700;color:#444;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">Datos del Cliente</div>'+
+      '<div style="display:flex;flex-wrap:wrap;gap:12px 32px">'+cellAlways("Empresa",cot.cliente.nombre)+cellAlways("RUT",cot.cliente.rut)+cell("Unidad / Sección",cot.cliente.unidad)+cellAlways("Contacto",cot.cliente.contacto)+cellAlways("Email",cot.cliente.email)+cellAlways("Teléfono",cot.cliente.telefono)+cellAlways("Dirección",cot.direccionEnvio||cot.cliente.direccion)+'</div>'+
+    '</div>' : '')+
+    '<table style="width:100%;border-collapse:collapse;font-size:11px">'+
+      '<thead><tr style="background:#1a5fa8;color:white">'+
+        '<th style="padding:9px 10px;text-align:left;width:44px">Nº</th>'+
+        '<th style="padding:9px 10px;text-align:left;width:160px">Nombre</th>'+
+        '<th style="padding:9px 10px;text-align:left">Descripción</th>'+
+        '<th style="padding:9px 10px;text-align:center;width:60px">Cant.</th>'+
+        '<th style="padding:9px 10px;text-align:right;width:96px">P. Unitario</th>'+
+        '<th style="padding:9px 10px;text-align:right;width:96px">Subtotal</th>'+
+      '</tr></thead><tbody>'+
+      cot.items.map((it,i) => {
+        const sub = (Number(it.cantidad)||0)*(Number(it.precio)||0);
+        return '<tr style="background:'+(i%2===0?"#fff":"#f5f8fd")+';border-bottom:1px solid #e5eaf3">'+
+          '<td style="padding:9px 10px;color:#888">'+(i+1)+'</td>'+
+          '<td style="padding:9px 10px;font-weight:600">'+it.nombre+'</td>'+
+          '<td style="padding:9px 10px;color:#444">'+(it.descripcion||"—")+'</td>'+
+          '<td style="padding:9px 10px;text-align:center">'+it.cantidad+'</td>'+
+          '<td style="padding:9px 10px;text-align:right">'+fmtCLP(it.precio)+'</td>'+
+          '<td style="padding:9px 10px;text-align:right;font-weight:600">'+fmtCLP(sub)+'</td>'+
+        '</tr>';
+      }).join("")+
+      '</tbody></table>'+
+    '<div style="display:flex;justify-content:flex-end;margin:0 0 14px">'+
+      '<table style="border-collapse:collapse;min-width:260px;font-size:12px;border:1px solid #dde5f0;border-top:none">'+
+        '<tr style="border-bottom:1px solid #dde5f0"><td style="padding:7px 16px;text-align:right;color:#555;background:#f8fafc">Subtotal:</td><td style="padding:7px 16px;text-align:right">'+fmtCLP(t.neto)+'</td></tr>'+
+        '<tr style="border-bottom:1px solid #dde5f0"><td style="padding:7px 16px;text-align:right;color:#555;background:#f8fafc">IVA (19%):</td><td style="padding:7px 16px;text-align:right">'+fmtCLP(t.ivaTotal)+'</td></tr>'+
+        '<tr><td style="padding:9px 16px;text-align:right;font-weight:700;font-size:13px;background:#f0f4fa">TOTAL:</td><td style="padding:9px 16px;text-align:right;font-weight:700;font-size:13px;background:#f0f4fa;color:#1a5fa8">'+fmtCLP(t.total)+'</td></tr>'+
+      '</table>'+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 2fr;gap:14px;margin-top:4px">'+
+      '<div style="border:1px solid #b8cce8;border-radius:8px;padding:12px 16px;background:#dce8f5">'+
+        '<div style="font-weight:700;font-size:10px;color:#444;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">Datos bancarios</div>'+
+        '<div style="font-size:11px;color:#333;line-height:1.9">'+BANCO_FIJO.join("<br/>")+'</div>'+
+      '</div>'+
+      (cot.notaPie ?
+      '<div style="border:1px solid #f0d060;border-radius:8px;padding:12px 16px;background:#fdf3c0">'+
+        '<div style="font-weight:700;font-size:10px;color:#7a6000;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">Observaciones / Nota al pie</div>'+
+        '<div style="font-size:11px;color:#444;line-height:1.6">'+cot.notaPie.replace(/\n/g,"<br/>")+'</div>'+
+      '</div>' : '<div></div>')+
+    '</div>'+
+  '</div>';
   el.style.display = "block";
   setTimeout(() => { window.print(); setTimeout(() => { document.title = prevTitle; el.style.display = "none"; el.innerHTML = ""; }, 1000); }, 200);
 }
 
-function Modal({ title, children, onClose }) {
+function Modal(props) {
   return (
-    <div className="modal-overlay" onClick={e => e.target===e.currentTarget && onClose()}>
+    <div className="modal-overlay" onClick={e => e.target===e.currentTarget && props.onClose()}>
       <div className="modal-box">
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"18px 22px", borderBottom:"1px solid #e5eaf3" }}>
-          <span style={{ fontWeight:600, fontSize:16 }}>{title}</span>
-          <button onClick={onClose} style={{ background:"none", border:"none", cursor:"pointer", fontSize:22, color:"#888", lineHeight:1 }}>×</button>
+          <span style={{ fontWeight:600, fontSize:16 }}>{props.title}</span>
+          <button onClick={props.onClose} style={{ background:"none", border:"none", cursor:"pointer", fontSize:22, color:"#888" }}>×</button>
         </div>
-        <div style={{ padding:"20px 22px" }}>{children}</div>
+        <div style={{ padding:"20px 22px" }}>{props.children}</div>
       </div>
     </div>
   );
 }
 
-function LogoImg({ size=48, logoSrc, onLogoChange, style={} }) {
+function LogoImg(props) {
+  const size = props.size || 48;
   const inputRef = useRef();
   function handleFile(e) {
     const file = e.target.files[0]; if (!file) return;
     const reader = new FileReader();
-    reader.onload = ev => onLogoChange && onLogoChange(ev.target.result);
+    reader.onload = ev => props.onLogoChange && props.onLogoChange(ev.target.result);
     reader.readAsDataURL(file);
   }
-  if (logoSrc) return (
-    <img src={logoSrc} alt="Logo" onClick={() => onLogoChange && inputRef.current.click()}
-      style={{ width:size, height:size, objectFit:"contain", borderRadius:6, flexShrink:0, cursor:onLogoChange?"pointer":"default", ...style }}
-      title={onLogoChange?"Clic para cambiar logo":""} />
+  if (props.logoSrc) return (
+    <img src={props.logoSrc} alt="Logo" onClick={() => props.onLogoChange && inputRef.current.click()}
+      style={Object.assign({ width:size, height:size, objectFit:"contain", borderRadius:6, flexShrink:0, cursor:props.onLogoChange?"pointer":"default" }, props.style||{})} />
   );
   return (
     <div onClick={() => inputRef.current && inputRef.current.click()} title="Clic para subir logo"
-      style={{ width:size, height:size, background:"#1a5fa8", borderRadius:10, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0, ...style }}>
-      {onLogoChange && <input ref={inputRef} type="file" accept="image/*" style={{ display:"none" }} onChange={handleFile} />}
-      <svg width={size*.5} height={size*.5} viewBox="0 0 24 24" fill="none">
-        <path d="M4 16l4-4 4 4 4-6 4 6" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-        <rect x="3" y="3" width="18" height="18" rx="3" stroke="white" strokeWidth="1.8"/>
-      </svg>
+      style={Object.assign({ width:size, height:size, background:"#1a5fa8", borderRadius:10, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0 }, props.style||{})}>
+      {props.onLogoChange && <input ref={inputRef} type="file" accept="image/*" style={{ display:"none" }} onChange={handleFile} />}
+      <svg width={size*.5} height={size*.5} viewBox="0 0 24 24" fill="none"><path d="M4 16l4-4 4 4 4-6 4 6" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><rect x="3" y="3" width="18" height="18" rx="3" stroke="white" strokeWidth="1.8"/></svg>
     </div>
   );
 }
@@ -332,10 +278,7 @@ function App() {
   const [saving, setSaving] = useState(false);
 
   useEffect(function() {
-    window.__firebase.onAuthChange(function(u) {
-      setUser(u);
-      setAuthChecked(true);
-    });
+    window.__firebase.onAuthChange(function(u) { setUser(u); setAuthChecked(true); });
   }, []);
 
   useEffect(function() {
@@ -358,7 +301,6 @@ function App() {
     setSaving(false);
   }
 
-  // Esperando verificación de sesión
   if (!authChecked) return (
     <div className="loading-screen">
       <div style={{ display:"flex", alignItems:"center", gap:10, color:"#1a5fa8", fontSize:15, fontWeight:500 }}>
@@ -368,7 +310,6 @@ function App() {
     </div>
   );
 
-  // Pantalla de login
   if (!user) return (
     <div className="loading-screen">
       <div style={{ background:"#fff", borderRadius:16, padding:40, maxWidth:400, width:"100%", textAlign:"center", border:"1px solid #d0daea", boxShadow:"0 4px 24px rgba(26,95,168,.08)" }}>
@@ -386,7 +327,6 @@ function App() {
     </div>
   );
 
-  // Cargando datos
   if (loading || !data) return (
     <div className="loading-screen">
       <div style={{ display:"flex", alignItems:"center", gap:10, color:"#1a5fa8", fontSize:15, fontWeight:500 }}>
@@ -400,221 +340,145 @@ function App() {
 }
 
 function MainApp({ data, updateData, saving, onLogout }) {
-  const props = { onLogout };
   const [tab, setTab] = useState("Cotizaciones");
   const [view, setView] = useState("list");
   const [editCot, setEditCot] = useState(null);
   const [clienteModal, setClienteModal] = useState(null);
   const [articuloModal, setArticuloModal] = useState(null);
-  const { clientes, articulos, cotizaciones, logo } = data;
+  const clientes = data.clientes, articulos = data.articulos, cotizaciones = data.cotizaciones, logo = data.logo;
 
-  const nextNum = cotizaciones.length > 0
-    ? Math.max(...cotizaciones.filter(c => !isNaN(Number(c.numero))).map(c => Number(c.numero)||0)) + 1 : 1;
+  const nums = cotizaciones.filter(c => !isNaN(Number(c.numero))).map(c => Number(c.numero)||0);
+  const nextNum = nums.length > 0 ? Math.max.apply(null, nums) + 1 : 1;
 
   function newCot() {
     setEditCot({ id:uid(), numero:String(nextNum), fecha:today(), responsable:"Felipe Peón-Veiga Cervantes",
       cliente:null, direccionEnvio:"", condicionPago:"Contado", items:[initItem()],
-      bancarios:EMPRESA.banco,
       notaPie:"Cotización válida por 30 días.\nPlazo de entrega: 2 días hábiles tras recepción de OC y archivos imprimibles.\nGarantía: 12 meses.",
       estado:"Abierta" });
     setView("edit");
   }
   function saveCot(c) {
-    const next = cotizaciones.find(x=>x.id===c.id) ? cotizaciones.map(x=>x.id===c.id?c:x) : [...cotizaciones,c];
-    updateData({ cotizaciones: next });
-    setEditCot(null); setView("list");
+    const next = cotizaciones.find(x=>x.id===c.id) ? cotizaciones.map(x=>x.id===c.id?c:x) : cotizaciones.concat([c]);
+    updateData({ cotizaciones: next }); setEditCot(null); setView("list");
   }
   function saveCliente(c) {
-    const next = clientes.find(x=>x.id===c.id) ? clientes.map(x=>x.id===c.id?c:x) : [...clientes,c];
-    updateData({ clientes: next });
-    setClienteModal(null);
+    const next = clientes.find(x=>x.id===c.id) ? clientes.map(x=>x.id===c.id?c:x) : clientes.concat([c]);
+    updateData({ clientes: next }); setClienteModal(null);
   }
   function saveArticulo(a) {
-    const next = articulos.find(x=>x.id===a.id) ? articulos.map(x=>x.id===a.id?a:x) : [...articulos,a];
-    updateData({ articulos: next });
-    setArticuloModal(null);
+    const next = articulos.find(x=>x.id===a.id) ? articulos.map(x=>x.id===a.id?a:x) : articulos.concat([a]);
+    updateData({ articulos: next }); setArticuloModal(null);
   }
 
   return (
     <div style={{ minHeight:"100vh" }}>
-      <div style={{ background:"#fff", borderBottom:"1.5px solid #d0daea", padding:"0 24px", display:"flex", alignItems:"center", position:"sticky", top:0, zIndex:100, boxShadow:"0 1px 4px rgba(26,95,168,.07)" }}>
+      <div style={{ background:"#fff", borderBottom:"1.5px solid #d0daea", padding:"0 24px", display:"flex", alignItems:"center", position:"sticky", top:0, zIndex:100 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10, marginRight:32, padding:"10px 0" }}>
           <LogoImg size={40} logoSrc={logo} onLogoChange={src => updateData({ logo: src })} />
-          <div>
-            <div style={{ fontWeight:700, fontSize:14, color:"#1a5fa8", lineHeight:1.2 }}>Andes Graphics</div>
-            <div style={{ fontSize:11, color:"#888" }}>Cotizador</div>
-          </div>
+          <div><div style={{ fontWeight:700, fontSize:14, color:"#1a5fa8" }}>Andes Graphics</div><div style={{ fontSize:11, color:"#888" }}>Cotizador</div></div>
         </div>
-        {["Cotizaciones","Clientes","Artículos"].map(t=>(
-          <button key={t} className={`tab-btn${tab===t?" active":""}`} onClick={()=>{ setTab(t); setView("list"); setEditCot(null); }}>{t}</button>
+        {["Cotizaciones","Clientes","Artículos"].map(t => (
+          <button key={t} className={"tab-btn" + (tab===t?" active":"")} onClick={() => { setTab(t); setView("list"); setEditCot(null); }}>{t}</button>
         ))}
         <div style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:12 }}>
-          {saving
-            ? <span style={{ fontSize:12, color:"#1a5fa8", display:"flex", alignItems:"center", gap:5 }}>
-                <span style={{ display:"inline-block", width:10, height:10, border:"2px solid #1a5fa8", borderTopColor:"transparent", borderRadius:"50%", animation:"spin 0.7s linear infinite" }}></span>
-                Guardando…
-              </span>
-            : <span style={{ fontSize:11, color:"#888" }}>✓ Guardado en la nube</span>
-          }
-          <button className="btn-outline" style={{ fontSize:12, padding:"5px 12px" }} onClick={props.onLogout}>Cerrar sesión</button>
+          <span style={{ fontSize:11, color:"#888" }}>{saving ? "Guardando…" : "✓ Guardado en la nube"}</span>
+          <button className="btn-outline" style={{ fontSize:12, padding:"5px 12px" }} onClick={onLogout}>Cerrar sesión</button>
         </div>
       </div>
 
       <div style={{ padding:"24px", maxWidth:1100, margin:"0 auto" }}>
         {tab==="Cotizaciones" && (view==="edit"
-          ? <EditCotizacion cot={editCot} clientes={clientes} articulos={articulos} logoSrc={logo}
-              onSave={saveCot} onCancel={()=>{ setEditCot(null); setView("list"); }}
-              onPrint={c=>renderPrint(c,logo)} />
-          : <CotizacionList cotizaciones={cotizaciones} onNew={newCot}
-              onEdit={c=>{ setEditCot(c); setView("edit"); }}
-              onPrint={c=>renderPrint(c,logo)} />
+          ? <EditCotizacion cot={editCot} clientes={clientes} articulos={articulos} logoSrc={logo} onSave={saveCot} onCancel={() => { setEditCot(null); setView("list"); }} onPrint={c => renderPrint(c, logo)} />
+          : <CotizacionList cotizaciones={cotizaciones} onNew={newCot} onEdit={c => { setEditCot(c); setView("edit"); }} onPrint={c => renderPrint(c, logo)} />
         )}
-        {tab==="Clientes" && (
-          <ClienteList clientes={clientes}
-            onNew={()=>setClienteModal({ id:uid(), nombre:"", rut:"", contacto:"", email:"", telefono:"", direccion:"" })}
-            onEdit={c=>setClienteModal({...c})}
-            onDelete={id=>{ if(confirm("¿Eliminar cliente?")) updateData({ clientes: clientes.filter(x=>x.id!==id) }); }} />
-        )}
-        {tab==="Artículos" && (
-          <ArticuloList articulos={articulos}
-            onNew={()=>setArticuloModal({ id:uid(), nombre:"", descripcion:"", precio:0 })}
-            onEdit={a=>setArticuloModal({...a})}
-            onDelete={id=>{ if(confirm("¿Eliminar artículo?")) updateData({ articulos: articulos.filter(x=>x.id!==id) }); }} />
-        )}
+        {tab==="Clientes" && <ClienteList clientes={clientes} onNew={() => setClienteModal({ id:uid(), nombre:"", rut:"", contacto:"", email:"", telefono:"", unidad:"", direccion:"" })} onEdit={c => setClienteModal(Object.assign({},c))} onDelete={id => { if(confirm("¿Eliminar cliente?")) updateData({ clientes: clientes.filter(x=>x.id!==id) }); }} />}
+        {tab==="Artículos" && <ArticuloList articulos={articulos} onNew={() => setArticuloModal({ id:uid(), nombre:"", descripcion:"", precio:0 })} onEdit={a => setArticuloModal(Object.assign({},a))} onDelete={id => { if(confirm("¿Eliminar artículo?")) updateData({ articulos: articulos.filter(x=>x.id!==id) }); }} />}
       </div>
 
-      {clienteModal && (
-        <Modal title={clientes.find(x=>x.id===clienteModal.id)?"Editar cliente":"Nuevo cliente"} onClose={()=>setClienteModal(null)}>
-          <ClienteForm c={clienteModal} onChange={setClienteModal} onSave={()=>saveCliente(clienteModal)} onCancel={()=>setClienteModal(null)} />
-        </Modal>
-      )}
-      {articuloModal && (
-        <Modal title={articulos.find(x=>x.id===articuloModal.id)?"Editar artículo":"Nuevo artículo"} onClose={()=>setArticuloModal(null)}>
-          <ArticuloForm a={articuloModal} onChange={setArticuloModal} onSave={()=>saveArticulo(articuloModal)} onCancel={()=>setArticuloModal(null)} />
-        </Modal>
-      )}
+      {clienteModal && <Modal title={clientes.find(x=>x.id===clienteModal.id)?"Editar cliente":"Nuevo cliente"} onClose={() => setClienteModal(null)}><ClienteForm c={clienteModal} onChange={setClienteModal} onSave={() => saveCliente(clienteModal)} onCancel={() => setClienteModal(null)} /></Modal>}
+      {articuloModal && <Modal title={articulos.find(x=>x.id===articuloModal.id)?"Editar artículo":"Nuevo artículo"} onClose={() => setArticuloModal(null)}><ArticuloForm a={articuloModal} onChange={setArticuloModal} onSave={() => saveArticulo(articuloModal)} onCancel={() => setArticuloModal(null)} /></Modal>}
     </div>
   );
 }
 
-function CotizacionList({ cotizaciones, onNew, onEdit, onPrint }) {
-  const sorted = [...cotizaciones].sort((a,b)=>{
-    const na=isNaN(Number(a.numero))?0:Number(a.numero);
-    const nb=isNaN(Number(b.numero))?0:Number(b.numero);
-    return nb-na;
-  });
+function CotizacionList(props) {
+  const sorted = props.cotizaciones.slice().sort((a,b) => (isNaN(Number(b.numero))?0:Number(b.numero)) - (isNaN(Number(a.numero))?0:Number(a.numero)));
   return (
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
         <h1 style={{ fontSize:24, fontWeight:600 }}>Cotizaciones</h1>
-        <button className="btn-blue" onClick={onNew}>+ Nueva cotización</button>
+        <button className="btn-blue" onClick={props.onNew}>+ Nueva cotización</button>
       </div>
       <div className="card" style={{ padding:0, overflow:"hidden" }}>
-        {cotizaciones.length===0
-          ? <div style={{ padding:56, textAlign:"center", color:"#888" }}>
-              <svg width="44" height="44" viewBox="0 0 24 24" fill="none" style={{ margin:"0 auto 12px", display:"block", opacity:.3 }}><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" stroke="currentColor" strokeWidth="1.5"/></svg>
-              <p>No hay cotizaciones aún. ¡Crea la primera!</p>
-            </div>
-          : <>
-              {/* Desktop */}
-              <div className="table-scroll" style={{ display:"none" }} ref={el => el && window.innerWidth > 640 && (el.style.display="block")}>
-                <table style={{ width:"100%" }}>
-                  <thead><tr><th>Fecha</th><th>Nº / ID</th><th>Cliente</th><th>Responsable</th><th style={{textAlign:"right"}}>Total</th><th>Estado</th><th>Acciones</th></tr></thead>
-                  <tbody>{sorted.map(c=>(
+        {props.cotizaciones.length===0
+          ? <div style={{ padding:56, textAlign:"center", color:"#888" }}>No hay cotizaciones aún. ¡Crea la primera!</div>
+          : <div>
+              <div style={{ overflowX:"auto" }}>
+                <table style={{ width:"100%", minWidth:600 }}>
+                  <thead><tr><th>Fecha</th><th>Nº / ID</th><th>Cliente</th><th className="desktop-col">Responsable</th><th style={{textAlign:"right"}}>Total</th><th className="desktop-col">Estado</th><th>Acciones</th></tr></thead>
+                  <tbody>{sorted.map(c => (
                     <tr key={c.id}>
                       <td>{c.fecha}</td>
                       <td style={{ color:"#1a5fa8", fontWeight:700 }}>{c.numero}</td>
-                      <td>{c.cliente?.nombre||"—"}</td>
-                      <td style={{ color:"#666" }}>{c.responsable||"—"}</td>
+                      <td>{c.cliente?c.cliente.nombre:"—"}</td>
+                      <td className="desktop-col" style={{ color:"#666" }}>{c.responsable||"—"}</td>
                       <td style={{ fontWeight:600, textAlign:"right" }}>{fmtCLP(calcTotals(c.items).total)}</td>
-                      <td><span className="badge-abierta">{c.estado}</span></td>
+                      <td className="desktop-col"><span className="badge-abierta">{c.estado}</span></td>
                       <td><div style={{ display:"flex", gap:6 }}>
-                        <button className="btn-outline" style={{ padding:"4px 10px", fontSize:12 }} onClick={()=>onEdit(c)}>Editar</button>
-                        <button className="btn-blue" style={{ padding:"4px 10px", fontSize:12 }} onClick={()=>onPrint(c)}>⬇ PDF</button>
+                        <button className="btn-outline" style={{ padding:"4px 10px", fontSize:12 }} onClick={() => props.onEdit(c)}>Editar</button>
+                        <button className="btn-blue" style={{ padding:"4px 10px", fontSize:12 }} onClick={() => props.onPrint(c)}>⬇ PDF</button>
                       </div></td>
                     </tr>
                   ))}</tbody>
                 </table>
               </div>
-              {/* Mobile */}
-              {sorted.map(c=>(
-                <div key={c.id} className="mobile-card-row">
-                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
-                    <div>
-                      <div className="mc-title">{c.cliente?.nombre||"Sin cliente"}</div>
-                      <div className="mc-sub">Nº {c.numero} · {c.fecha}</div>
-                      <div className="mc-sub">{c.responsable||""}</div>
-                    </div>
-                    <div style={{ textAlign:"right" }}>
-                      <div style={{ fontWeight:700, color:"#1a5fa8", fontSize:15 }}>{fmtCLP(calcTotals(c.items).total)}</div>
-                      <span className="badge-abierta" style={{ marginTop:4, display:"inline-block" }}>{c.estado}</span>
-                    </div>
-                  </div>
-                  <div className="mc-actions">
-                    <button className="btn-outline" style={{ flex:1, padding:"6px", fontSize:13 }} onClick={()=>onEdit(c)}>Editar</button>
-                    <button className="btn-blue" style={{ flex:1, padding:"6px", fontSize:13 }} onClick={()=>onPrint(c)}>⬇ PDF</button>
-                  </div>
-                </div>
-              ))}
-            </>
+            </div>
         }
       </div>
     </div>
   );
 }
 
-function EditCotizacion({ cot, clientes, articulos, logoSrc, onSave, onCancel, onPrint }) {
-  const [c, setC] = useState(cot);
-  const set = (k,v) => setC(prev=>({...prev,[k]:v}));
-  function setCliente(id) {
-    const cl = clientes.find(x=>String(x.id)===String(id));
-    setC(prev=>({...prev, cliente:cl||null, direccionEnvio:cl?.direccion||""}));
-  }
-  function addItem() { setC(prev=>({...prev, items:[...prev.items,initItem()]})); }
-  function removeItem(id) { setC(prev=>({...prev, items:prev.items.filter(x=>x.id!==id)})); }
-  function setItem(id,k,v) { setC(prev=>({...prev, items:prev.items.map(x=>x.id===id?{...x,[k]:v}:x)})); }
+function EditCotizacion(props) {
+  const [c, setC] = useState(props.cot);
+  const clientes = props.clientes, articulos = props.articulos;
+  const set = (k,v) => setC(p => Object.assign({}, p, {[k]:v}));
+  function setCliente(id) { const cl = clientes.find(x => String(x.id)===String(id)); setC(p => Object.assign({}, p, { cliente:cl||null, direccionEnvio:cl?cl.direccion:"" })); }
+  function addItem() { setC(p => Object.assign({}, p, { items:p.items.concat([initItem()]) })); }
+  function removeItem(id) { setC(p => Object.assign({}, p, { items:p.items.filter(x=>x.id!==id) })); }
+  function setItem(id,k,v) { setC(p => Object.assign({}, p, { items:p.items.map(x=>x.id===id?Object.assign({},x,{[k]:v}):x) })); }
   function fillFromArt(itemId, nombre) {
     const art = articulos.find(a=>a.nombre===nombre);
-    if (art) setC(prev=>({...prev, items:prev.items.map(x=>x.id===itemId?{...x,nombre:art.nombre,descripcion:art.descripcion,precio:art.precio}:x)}));
+    if (art) setC(p => Object.assign({}, p, { items:p.items.map(x=>x.id===itemId?Object.assign({},x,{nombre:art.nombre,descripcion:art.descripcion,precio:art.precio}):x) }));
     else setItem(itemId,"nombre",nombre);
   }
-  const { neto, ivaTotal, total } = calcTotals(c.items);
+  const t = calcTotals(c.items);
   return (
     <div>
-      <div style={{ marginBottom:20 }}>
-        <h1 style={{ fontSize:22, fontWeight:600 }}>Cotización Nº {c.numero}</h1>
-      </div>
+      <h1 style={{ fontSize:22, fontWeight:600, marginBottom:20 }}>Cotización Nº {c.numero}</h1>
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:16 }}>
         <div className="card">
           <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:14, paddingBottom:12, borderBottom:"1px solid #e5eaf3" }}>
-            <LogoImg size={52} logoSrc={logoSrc} />
-            <div>
-              <div style={{ fontWeight:700, fontSize:14, color:"#1a5fa8" }}>{EMPRESA.nombre}</div>
-              <div style={{ fontSize:12, color:"#666" }}>RUT: {EMPRESA.rut}</div>
-              <div style={{ fontSize:11, color:"#888" }}>{EMPRESA.email} · {EMPRESA.telefono}</div>
-            </div>
+            <LogoImg size={52} logoSrc={props.logoSrc} />
+            <div><div style={{ fontWeight:700, fontSize:14, color:"#1a5fa8" }}>{EMPRESA.nombre}</div><div style={{ fontSize:12, color:"#666" }}>RUT: {EMPRESA.rut}</div><div style={{ fontSize:11, color:"#888" }}>{EMPRESA.email} · {EMPRESA.telefono}</div></div>
           </div>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
             <div><label>Fecha</label><input type="date" value={c.fecha} onChange={e=>set("fecha",e.target.value)} /></div>
             <div><label>Nº / ID Cotización</label><input type="text" value={c.numero} onChange={e=>set("numero",e.target.value)} placeholder="Ej: 136 o OC-2024-001" /></div>
-            <div><label>Condición de pago</label>
-              <select value={c.condicionPago} onChange={e=>set("condicionPago",e.target.value)}>
-                <option>Contado</option><option>Crédito 30 días</option><option>Crédito 60 días</option>
-              </select>
-            </div>
-            <div><label>Responsable</label><input type="text" value={c.responsable||""} onChange={e=>set("responsable",e.target.value)} placeholder="Nombre del responsable" /></div>
+            <div><label>Condición de pago</label><select value={c.condicionPago} onChange={e=>set("condicionPago",e.target.value)}><option>Contado</option><option>Crédito 30 días</option><option>Crédito 60 días</option></select></div>
+            <div><label>Responsable</label><input type="text" value={c.responsable||""} onChange={e=>set("responsable",e.target.value)} /></div>
           </div>
         </div>
         <div className="card">
           <div style={{ fontWeight:600, fontSize:13, marginBottom:10, color:"#1a5fa8" }}>Cliente</div>
-          <select value={c.cliente?.id||""} onChange={e=>setCliente(e.target.value)} style={{ marginBottom:10 }}>
+          <select value={c.cliente?c.cliente.id:""} onChange={e=>setCliente(e.target.value)} style={{ marginBottom:10 }}>
             <option value="">— Seleccionar cliente —</option>
-            {clientes.map(cl=><option key={cl.id} value={cl.id}>{cl.nombre}</option>)}
+            {clientes.map(cl => <option key={cl.id} value={cl.id}>{cl.nombre}</option>)}
           </select>
           {c.cliente && <div style={{ padding:"8px 10px", background:"#f0f4fa", borderRadius:8, fontSize:12, color:"#555", marginBottom:10 }}>
             <div style={{ fontWeight:600, color:"#1a5fa8" }}>{c.cliente.nombre}</div>
-            <div>RUT: {c.cliente.rut} · {c.cliente.telefono}</div>
-            <div>{c.cliente.email}</div>
+            {c.cliente.unidad && <div>{c.cliente.unidad}</div>}
+            <div>RUT: {c.cliente.rut} · {c.cliente.telefono}</div><div>{c.cliente.email}</div>
           </div>}
           <label>Dirección de envío</label>
           <input value={c.direccionEnvio} onChange={e=>set("direccionEnvio",e.target.value)} placeholder="Dirección de despacho" />
@@ -624,31 +488,21 @@ function EditCotizacion({ cot, clientes, articulos, logoSrc, onSave, onCancel, o
         <div style={{ padding:"14px 16px 0", fontWeight:600, fontSize:14, color:"#1a5fa8" }}>Ítems</div>
         <div style={{ overflowX:"auto" }}>
           <table style={{ width:"100%", minWidth:800 }}>
-            <thead><tr>
-              <th style={{ width:64 }}>Cant.</th><th style={{ width:160 }}>Artículo</th>
-              <th>Descripción / Esp. proveedor</th>
-              <th style={{ width:120, textAlign:"right" }}>P. Unit.</th>
-              <th style={{ width:56, textAlign:"center" }}>IVA</th>
-              <th style={{ width:110, textAlign:"right" }}>Total</th>
-              <th style={{ width:36 }}></th>
-            </tr></thead>
-            <tbody>{c.items.map(it=>{
+            <thead><tr><th style={{width:64}}>Cant.</th><th style={{width:160}}>Artículo</th><th>Descripción</th><th style={{width:120,textAlign:"right"}}>P. Unit.</th><th style={{width:56,textAlign:"center"}}>IVA</th><th style={{width:110,textAlign:"right"}}>Total</th><th style={{width:36}}></th></tr></thead>
+            <tbody>{c.items.map(it => {
               const sub=(Number(it.cantidad)||0)*(Number(it.precio)||0);
               const tot=it.iva?sub*(1+IVA_RATE):sub;
               return (<tr key={it.id}>
-                <td><input type="number" min="1" value={it.cantidad} onChange={e=>setItem(it.id,"cantidad",Number(e.target.value))} style={{ width:56 }} /></td>
+                <td><input type="number" min="1" value={it.cantidad} onChange={e=>setItem(it.id,"cantidad",Number(e.target.value))} style={{width:56}} /></td>
                 <td>
-                  <select value={it.nombre} onChange={e=>fillFromArt(it.id,e.target.value)} style={{ marginBottom:4, fontSize:12 }}>
-                    <option value="">— catálogo —</option>
-                    {articulos.map(a=><option key={a.id}>{a.nombre}</option>)}
-                  </select>
-                  <input value={it.nombre} onChange={e=>setItem(it.id,"nombre",e.target.value)} placeholder="Nombre libre" style={{ fontSize:12 }} />
+                  <select value={it.nombre} onChange={e=>fillFromArt(it.id,e.target.value)} style={{marginBottom:4,fontSize:12}}><option value="">— catálogo —</option>{articulos.map(a=><option key={a.id}>{a.nombre}</option>)}</select>
+                  <input value={it.nombre} onChange={e=>setItem(it.id,"nombre",e.target.value)} placeholder="Nombre libre" style={{fontSize:12}} />
                 </td>
-                <td><textarea value={it.descripcion} onChange={e=>setItem(it.id,"descripcion",e.target.value)} rows={2} style={{ resize:"vertical", minHeight:48 }} placeholder="Descripción o especificación técnica" /></td>
-                <td><input type="number" min="0" value={it.precio} onChange={e=>setItem(it.id,"precio",Number(e.target.value))} style={{ textAlign:"right" }} /></td>
-                <td style={{ textAlign:"center" }}><input type="checkbox" checked={it.iva} onChange={e=>setItem(it.id,"iva",e.target.checked)} style={{ width:"auto", cursor:"pointer" }} /></td>
-                <td style={{ fontWeight:600, textAlign:"right", color:"#1a5fa8" }}>{fmtCLP(tot)}</td>
-                <td><button onClick={()=>removeItem(it.id)} style={{ background:"none", border:"none", cursor:"pointer", color:"#e24b4a", fontSize:20, lineHeight:1, padding:"0 4px" }}>×</button></td>
+                <td><textarea value={it.descripcion} onChange={e=>setItem(it.id,"descripcion",e.target.value)} rows={2} style={{resize:"vertical",minHeight:48}} /></td>
+                <td><input type="number" min="0" value={it.precio} onChange={e=>setItem(it.id,"precio",Number(e.target.value))} style={{textAlign:"right"}} /></td>
+                <td style={{textAlign:"center"}}><input type="checkbox" checked={it.iva} onChange={e=>setItem(it.id,"iva",e.target.checked)} style={{width:"auto",cursor:"pointer"}} /></td>
+                <td style={{fontWeight:600,textAlign:"right",color:"#1a5fa8"}}>{fmtCLP(tot)}</td>
+                <td><button onClick={()=>removeItem(it.id)} style={{background:"none",border:"none",cursor:"pointer",color:"#e24b4a",fontSize:20,padding:"0 4px"}}>×</button></td>
               </tr>);
             })}</tbody>
           </table>
@@ -656,139 +510,106 @@ function EditCotizacion({ cot, clientes, articulos, logoSrc, onSave, onCancel, o
         <div style={{ padding:"12px 16px", display:"flex", justifyContent:"space-between", alignItems:"flex-start", borderTop:"1px solid #e5eaf3" }}>
           <button className="btn-outline" style={{ fontSize:12, padding:"6px 14px" }} onClick={addItem}>+ Agregar ítem</button>
           <div style={{ background:"#f0f4fa", borderRadius:10, padding:"12px 18px", minWidth:260 }}>
-            <div style={{ display:"flex", justifyContent:"space-between", fontSize:13, marginBottom:5, color:"#555" }}><span>Neto</span><span>{fmtCLP(neto)}</span></div>
-            <div style={{ display:"flex", justifyContent:"space-between", fontSize:13, marginBottom:8, color:"#555" }}><span>IVA (19%)</span><span>{fmtCLP(ivaTotal)}</span></div>
-            <div style={{ display:"flex", justifyContent:"space-between", fontSize:16, fontWeight:700, borderTop:"1.5px solid #b8cce8", paddingTop:8, color:"#1a5fa8" }}><span>Total</span><span>{fmtCLP(total)}</span></div>
+            <div style={{ display:"flex", justifyContent:"space-between", fontSize:13, marginBottom:5, color:"#555" }}><span>Neto</span><span>{fmtCLP(t.neto)}</span></div>
+            <div style={{ display:"flex", justifyContent:"space-between", fontSize:13, marginBottom:8, color:"#555" }}><span>IVA (19%)</span><span>{fmtCLP(t.ivaTotal)}</span></div>
+            <div style={{ display:"flex", justifyContent:"space-between", fontSize:16, fontWeight:700, borderTop:"1.5px solid #b8cce8", paddingTop:8, color:"#1a5fa8" }}><span>Total</span><span>{fmtCLP(t.total)}</span></div>
           </div>
         </div>
       </div>
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
-        <div className="card">
-          <label style={{ fontWeight:600, fontSize:13, color:"#1a5fa8", marginBottom:8, display:"block" }}>Datos bancarios</label>
-          <textarea value={c.bancarios} onChange={e=>set("bancarios",e.target.value)} rows={5} style={{ resize:"vertical" }} />
-        </div>
-        <div className="card">
-          <label style={{ fontWeight:600, fontSize:13, color:"#1a5fa8", marginBottom:8, display:"block" }}>Observaciones / Nota al pie</label>
-          <textarea value={c.notaPie} onChange={e=>set("notaPie",e.target.value)} rows={5} style={{ resize:"vertical" }} />
-        </div>
+      <div className="card">
+        <label style={{ fontWeight:600, fontSize:13, color:"#1a5fa8", marginBottom:8, display:"block" }}>Observaciones / Nota al pie</label>
+        <textarea value={c.notaPie} onChange={e=>set("notaPie",e.target.value)} rows={4} style={{ resize:"vertical" }} />
+        <div style={{ marginTop:10, fontSize:12, color:"#888" }}>Los datos bancarios se incluyen automáticamente en el PDF.</div>
       </div>
       <div className="action-bar">
-        <button className="btn-outline" onClick={onCancel}>Cancelar</button>
-        <button className="btn-outline" onClick={()=>onPrint(c)}>⬇ Descargar PDF</button>
-        <button className="btn-blue" onClick={()=>onSave(c)}>Guardar cotización</button>
+        <button className="btn-outline" onClick={props.onCancel}>Cancelar</button>
+        <button className="btn-outline" onClick={()=>props.onPrint(c)}>⬇ Descargar PDF</button>
+        <button className="btn-blue" onClick={()=>props.onSave(c)}>Guardar cotización</button>
       </div>
     </div>
   );
 }
 
-function ClienteList({ clientes, onNew, onEdit, onDelete }) {
+function ClienteList(props) {
   return (
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
         <h1 style={{ fontSize:24, fontWeight:600 }}>Clientes</h1>
-        <button className="btn-blue" onClick={onNew}>+ Nuevo cliente</button>
+        <button className="btn-blue" onClick={props.onNew}>+ Nuevo cliente</button>
       </div>
       <div className="card" style={{ padding:0, overflow:"hidden" }}>
-        {clientes.length===0
+        {props.clientes.length===0
           ? <div style={{ padding:56, textAlign:"center", color:"#888" }}>No hay clientes registrados aún.</div>
-          : <>
-              <div className="table-scroll">
-                <table style={{ width:"100%", minWidth:600 }}>
-                  <thead><tr><th>Nombre</th><th className="desktop-col">RUT</th><th className="desktop-col">Contacto</th><th className="desktop-col">Email</th><th className="desktop-col">Teléfono</th><th>Acciones</th></tr></thead>
-                  <tbody>{clientes.map(c=>(
-                    <tr key={c.id}>
-                      <td style={{ fontWeight:600 }}>{c.nombre}</td>
-                      <td className="desktop-col">{c.rut}</td>
-                      <td className="desktop-col">{c.contacto}</td>
-                      <td className="desktop-col">{c.email}</td>
-                      <td className="desktop-col">{c.telefono}</td>
-                      <td><div style={{ display:"flex", gap:6 }}>
-                        <button className="btn-outline" style={{ padding:"4px 10px", fontSize:12 }} onClick={()=>onEdit(c)}>Editar</button>
-                        <button className="btn-danger" onClick={()=>onDelete(c.id)}>Eliminar</button>
-                      </div></td>
-                    </tr>
-                  ))}</tbody>
-                </table>
-              </div>
-              {clientes.map(c=>(
-                <div key={c.id} className="mobile-card-row">
-                  <div className="mc-title">{c.nombre}</div>
-                  <div className="mc-sub">RUT: {c.rut} · {c.telefono}</div>
-                  <div className="mc-sub">{c.email}</div>
-                  <div className="mc-actions">
-                    <button className="btn-outline" style={{ flex:1, padding:"6px", fontSize:13 }} onClick={()=>onEdit(c)}>Editar</button>
-                    <button className="btn-danger" style={{ flex:1, padding:"6px", fontSize:13 }} onClick={()=>onDelete(c.id)}>Eliminar</button>
-                  </div>
-                </div>
-              ))}
-            </>
+          : <div style={{ overflowX:"auto" }}>
+              <table style={{ width:"100%", minWidth:700 }}>
+                <thead><tr><th>Nombre</th><th className="desktop-col">RUT</th><th className="desktop-col">Unidad / Sección</th><th className="desktop-col">Contacto</th><th className="desktop-col">Email</th><th className="desktop-col">Teléfono</th><th>Acciones</th></tr></thead>
+                <tbody>{props.clientes.map(c => (
+                  <tr key={c.id}>
+                    <td style={{ fontWeight:600 }}>{c.nombre}</td>
+                    <td className="desktop-col">{c.rut}</td><td className="desktop-col">{c.unidad}</td><td className="desktop-col">{c.contacto}</td><td className="desktop-col">{c.email}</td><td className="desktop-col">{c.telefono}</td>
+                    <td><div style={{ display:"flex", gap:6 }}>
+                      <button className="btn-outline" style={{ padding:"4px 10px", fontSize:12 }} onClick={()=>props.onEdit(c)}>Editar</button>
+                      <button className="btn-danger" onClick={()=>props.onDelete(c.id)}>Eliminar</button>
+                    </div></td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
         }
       </div>
     </div>
   );
 }
-function ClienteForm({ c, onChange, onSave, onCancel }) {
-  const set=(k,v)=>onChange({...c,[k]:v});
+
+function ClienteForm(props) {
+  const c = props.c;
+  const set = (k,v) => props.onChange(Object.assign({}, c, {[k]:v}));
+  const campos = [["nombre","Nombre empresa / cliente",true],["rut","RUT",false],["contacto","Persona de contacto",false],["email","Email",false],["telefono","Teléfono",false],["unidad","Unidad / Sección (opcional)",true],["direccion","Dirección",true]];
   return (
     <div>
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
-        {[["nombre","Nombre empresa / cliente",true],["rut","RUT",false],["contacto","Persona de contacto",false],["email","Email",false],["telefono","Teléfono",false],["direccion","Dirección",true]].map(([k,lbl,full])=>(
-          <div key={k} style={full?{gridColumn:"1/-1"}:{}}>
-            <label>{lbl}</label><input value={c[k]||""} onChange={e=>set(k,e.target.value)} />
-          </div>
-        ))}
+        {campos.map(arr => <div key={arr[0]} style={arr[2]?{gridColumn:"1/-1"}:{}}><label>{arr[1]}</label><input value={c[arr[0]]||""} onChange={e=>set(arr[0],e.target.value)} /></div>)}
       </div>
       <div style={{ display:"flex", gap:8, marginTop:20, justifyContent:"flex-end" }}>
-        <button className="btn-outline" onClick={onCancel}>Cancelar</button>
-        <button className="btn-blue" onClick={onSave}>Guardar cliente</button>
+        <button className="btn-outline" onClick={props.onCancel}>Cancelar</button>
+        <button className="btn-blue" onClick={props.onSave}>Guardar cliente</button>
       </div>
     </div>
   );
 }
 
-function ArticuloList({ articulos, onNew, onEdit, onDelete }) {
+function ArticuloList(props) {
   return (
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
         <h1 style={{ fontSize:24, fontWeight:600 }}>Artículos</h1>
-        <button className="btn-blue" onClick={onNew}>+ Nuevo artículo</button>
+        <button className="btn-blue" onClick={props.onNew}>+ Nuevo artículo</button>
       </div>
       <div className="card" style={{ padding:0, overflow:"hidden" }}>
-        <>
-          <div className="table-scroll">
-            <table style={{ width:"100%", minWidth:500 }}>
-              <thead><tr><th>Nombre</th><th className="desktop-col">Descripción</th><th style={{textAlign:"right"}}>Precio</th><th>Acciones</th></tr></thead>
-              <tbody>{articulos.map(a=>(
-                <tr key={a.id}>
-                  <td style={{ fontWeight:600 }}>{a.nombre}</td>
-                  <td className="desktop-col" style={{ color:"#666", maxWidth:340 }}><div style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{a.descripcion}</div></td>
-                  <td style={{ textAlign:"right", fontWeight:500 }}>{fmtCLP(a.precio)}</td>
-                  <td><div style={{ display:"flex", gap:6 }}>
-                    <button className="btn-outline" style={{ padding:"4px 10px", fontSize:12 }} onClick={()=>onEdit(a)}>Editar</button>
-                    <button className="btn-danger" onClick={()=>onDelete(a.id)}>Eliminar</button>
-                  </div></td>
-                </tr>
-              ))}</tbody>
-            </table>
-          </div>
-          {articulos.map(a=>(
-            <div key={a.id} className="mobile-card-row">
-              <div className="mc-title">{a.nombre}</div>
-              <div className="mc-sub">{a.descripcion}</div>
-              <div style={{ fontWeight:700, color:"#1a5fa8", fontSize:14, marginTop:4 }}>{fmtCLP(a.precio)}</div>
-              <div className="mc-actions">
-                <button className="btn-outline" style={{ flex:1, padding:"6px", fontSize:13 }} onClick={()=>onEdit(a)}>Editar</button>
-                <button className="btn-danger" style={{ flex:1, padding:"6px", fontSize:13 }} onClick={()=>onDelete(a.id)}>Eliminar</button>
-              </div>
-            </div>
-          ))}
-        </>
+        <div style={{ overflowX:"auto" }}>
+          <table style={{ width:"100%", minWidth:500 }}>
+            <thead><tr><th>Nombre</th><th className="desktop-col">Descripción</th><th style={{textAlign:"right"}}>Precio</th><th>Acciones</th></tr></thead>
+            <tbody>{props.articulos.map(a => (
+              <tr key={a.id}>
+                <td style={{ fontWeight:600 }}>{a.nombre}</td>
+                <td className="desktop-col" style={{ color:"#666", maxWidth:340 }}><div style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{a.descripcion}</div></td>
+                <td style={{ textAlign:"right", fontWeight:500 }}>{fmtCLP(a.precio)}</td>
+                <td><div style={{ display:"flex", gap:6 }}>
+                  <button className="btn-outline" style={{ padding:"4px 10px", fontSize:12 }} onClick={()=>props.onEdit(a)}>Editar</button>
+                  <button className="btn-danger" onClick={()=>props.onDelete(a.id)}>Eliminar</button>
+                </div></td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
 }
-function ArticuloForm({ a, onChange, onSave, onCancel }) {
-  const set=(k,v)=>onChange({...a,[k]:v});
+
+function ArticuloForm(props) {
+  const a = props.a;
+  const set = (k,v) => props.onChange(Object.assign({}, a, {[k]:v}));
   return (
     <div>
       <div style={{ display:"grid", gap:12 }}>
@@ -797,8 +618,8 @@ function ArticuloForm({ a, onChange, onSave, onCancel }) {
         <div><label>Precio unitario (sin IVA)</label><input type="number" value={a.precio||0} onChange={e=>set("precio",Number(e.target.value))} /></div>
       </div>
       <div style={{ display:"flex", gap:8, marginTop:20, justifyContent:"flex-end" }}>
-        <button className="btn-outline" onClick={onCancel}>Cancelar</button>
-        <button className="btn-blue" onClick={onSave}>Guardar artículo</button>
+        <button className="btn-outline" onClick={props.onCancel}>Cancelar</button>
+        <button className="btn-blue" onClick={props.onSave}>Guardar artículo</button>
       </div>
     </div>
   );
