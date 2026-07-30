@@ -256,16 +256,36 @@ function LogoImg(props) {
     reader.onload = ev => props.onLogoChange && props.onLogoChange(ev.target.result);
     reader.readAsDataURL(file);
   }
+  const inputEl = props.onLogoChange ? <input ref={inputRef} type="file" accept="image/*" style={{ display:"none" }} onChange={handleFile} /> : null;
   if (props.logoSrc) return (
-    <img src={props.logoSrc} alt="Logo" onClick={() => props.onLogoChange && inputRef.current.click()}
-      style={Object.assign({ width:size, height:size, objectFit:"contain", borderRadius:6, flexShrink:0, cursor:props.onLogoChange?"pointer":"default" }, props.style||{})} />
+    <React.Fragment>
+      {inputEl}
+      <img src={props.logoSrc} alt="Logo" onClick={() => props.onLogoChange && inputRef.current.click()}
+        style={Object.assign({ width:size, height:size, objectFit:"contain", borderRadius:6, flexShrink:0, cursor:props.onLogoChange?"pointer":"default" }, props.style||{})} />
+    </React.Fragment>
   );
   return (
     <div onClick={() => inputRef.current && inputRef.current.click()} title="Clic para subir logo"
       style={Object.assign({ width:size, height:size, background:"#1a5fa8", borderRadius:10, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0 }, props.style||{})}>
-      {props.onLogoChange && <input ref={inputRef} type="file" accept="image/*" style={{ display:"none" }} onChange={handleFile} />}
+      {inputEl}
       <svg width={size*.5} height={size*.5} viewBox="0 0 24 24" fill="none"><path d="M4 16l4-4 4 4 4-6 4 6" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><rect x="3" y="3" width="18" height="18" rx="3" stroke="white" strokeWidth="1.8"/></svg>
     </div>
+  );
+}
+
+function LogoUploader(props) {
+  const inputRef = useRef();
+  function handleFile(e) {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => props.onLogoChange(ev.target.result);
+    reader.readAsDataURL(file);
+  }
+  return (
+    <React.Fragment>
+      <input ref={inputRef} type="file" accept="image/*" style={{ display:"none" }} onChange={handleFile} />
+      <button className="btn-outline" style={{ fontSize:12, padding:"5px 12px" }} onClick={() => inputRef.current.click()}>Cambiar logo</button>
+    </React.Fragment>
   );
 }
 
@@ -382,6 +402,7 @@ function MainApp({ data, updateData, saving, onLogout }) {
         ))}
         <div style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:12 }}>
           <span style={{ fontSize:11, color:"#888" }}>{saving ? "Guardando…" : "✓ Guardado en la nube"}</span>
+          <LogoUploader onLogoChange={src => updateData({ logo: src })} />
           <button className="btn-outline" style={{ fontSize:12, padding:"5px 12px" }} onClick={onLogout}>Cerrar sesión</button>
         </div>
       </div>
