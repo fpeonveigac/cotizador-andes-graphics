@@ -443,8 +443,12 @@ function MainApp({ data, updateData, saving, onLogout }) {
 
 function CotizacionList(props) {
   const [q, setQ] = useState("");
-  // Orden: más nuevas arriba (por número descendente)
-  let lista = props.cotizaciones.slice().sort((a,b) => (isNaN(Number(b.numero))?0:Number(b.numero)) - (isNaN(Number(a.numero))?0:Number(a.numero)));
+  // Orden: más nuevas arriba, por fecha de creación (fecha; si empatan, por id)
+  let lista = props.cotizaciones.slice().sort((a,b) => {
+    const fa = a.fecha || "", fb = b.fecha || "";
+    if (fa !== fb) return fb.localeCompare(fa);
+    return (Number(b.id)||0) - (Number(a.id)||0);
+  });
   if (q.trim()) {
     const nq = norm(q);
     lista = lista.filter(c => {
@@ -467,10 +471,10 @@ function CotizacionList(props) {
           : <div>
               <div style={{ overflowX:"auto" }}>
                 <table style={{ width:"100%", minWidth:600 }}>
-                  <thead><tr><th>Fecha</th><th>Nº / ID</th><th>Cliente</th><th className="desktop-col">Responsable</th><th style={{textAlign:"right"}}>Total</th><th className="desktop-col">Estado</th><th>Acciones</th></tr></thead>
+                  <thead><tr><th style={{width:96,whiteSpace:"nowrap"}}>Fecha</th><th>Nº / ID</th><th>Cliente</th><th className="desktop-col">Responsable</th><th style={{textAlign:"right"}}>Total</th><th className="desktop-col">Estado</th><th>Acciones</th></tr></thead>
                   <tbody>{lista.map(c => (
                     <tr key={c.id}>
-                      <td>{c.fecha}</td>
+                      <td style={{whiteSpace:"nowrap"}}>{c.fecha}</td>
                       <td style={{ color:"#1a5fa8", fontWeight:700 }}>{c.numero}</td>
                       <td>{c.cliente?c.cliente.nombre:"—"}</td>
                       <td className="desktop-col" style={{ color:"#666" }}>{c.responsable||"—"}</td>
@@ -607,11 +611,11 @@ function ClienteList(props) {
           ? <div style={{ padding:40, textAlign:"center", color:"#888" }}>Sin resultados para "{q}".</div>
           : <div style={{ overflowX:"auto" }}>
               <table style={{ width:"100%", minWidth:700 }}>
-                <thead><tr><th>Nombre</th><th className="desktop-col">RUT</th><th className="desktop-col">Unidad / Sección</th><th className="desktop-col">Contacto</th><th className="desktop-col">Email</th><th className="desktop-col">Teléfono</th><th>Acciones</th></tr></thead>
+                <thead><tr><th>Nombre</th><th className="desktop-col" style={{width:110,whiteSpace:"nowrap"}}>RUT</th><th className="desktop-col">Unidad / Sección</th><th className="desktop-col">Contacto</th><th className="desktop-col">Email</th><th className="desktop-col">Teléfono</th><th>Acciones</th></tr></thead>
                 <tbody>{lista.map(c => (
                   <tr key={c.id}>
                     <td style={{ fontWeight:600 }}>{c.nombre}</td>
-                    <td className="desktop-col">{c.rut}</td><td className="desktop-col">{c.unidad}</td><td className="desktop-col">{c.contacto}</td><td className="desktop-col">{c.email}</td><td className="desktop-col">{c.telefono}</td>
+                    <td className="desktop-col" style={{whiteSpace:"nowrap"}}>{c.rut}</td><td className="desktop-col">{c.unidad}</td><td className="desktop-col">{c.contacto}</td><td className="desktop-col">{c.email}</td><td className="desktop-col">{c.telefono}</td>
                     <td><div style={{ display:"flex", gap:6 }}>
                       <button className="btn-outline" style={{ padding:"4px 10px", fontSize:12 }} onClick={()=>props.onEdit(c)}>Editar</button>
                       <button className="btn-danger" onClick={()=>props.onDelete(c.id)}>Eliminar</button>
