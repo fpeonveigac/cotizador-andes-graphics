@@ -105,6 +105,9 @@
   .modal-box { background: #fff; border-radius: 14px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 40px rgba(0,0,0,0.18); }
   .action-bar { background: #fff; border-top: 1.5px solid #d0daea; padding: 16px 24px; display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; border-radius: 12px; }
   .loading-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px; }
+  .search-bar { width: 100%; max-width: 360px; margin-bottom: 16px; position: relative; }
+  .search-bar input { padding-left: 34px; }
+  .search-bar svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; }
   @keyframes spin { to { transform: rotate(360deg); } }
   @media print {
     body > #root > * { display: none !important; }
@@ -134,7 +137,7 @@ const { useState, useRef, useCallback, useEffect } = React;
 const IVA_RATE = 0.19;
 const EMPRESA = {
   nombre: "Andes Graphics SpA",
-  rut: "77.714.322-0",
+  rut: "77.958.663-4",
   direccion: "Av Pacífico 640, Serena Golf, La Serena",
   email: "andesgraph@gmail.com",
   telefono: "+56 9 9047 2411",
@@ -145,6 +148,13 @@ const fmtCLP = n => "$" + Math.round(Number(n) || 0).toLocaleString("es-CL");
 const today = () => new Date().toISOString().split("T")[0];
 const uid = () => Date.now() + Math.random();
 const initItem = () => ({ id: uid(), nombre: "", descripcion: "", cantidad: 1, precio: 0, iva: true });
+
+// Normaliza texto para búsquedas (sin acentos, minúsculas)
+const norm = s => (s||"").toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+// Normaliza RUT para comparar (sin puntos, guiones ni espacios)
+const normRut = s => (s||"").toString().toLowerCase().replace(/[.\-\s]/g,"");
+// Orden alfabético por nombre (español)
+const byNombre = (a,b) => (a.nombre||"").localeCompare(b.nombre||"", "es", { sensitivity:"base" });
 
 function calcTotals(items) {
   let neto = 0, ivaTotal = 0;
@@ -243,6 +253,15 @@ function Modal(props) {
         </div>
         <div style={{ padding:"20px 22px" }}>{props.children}</div>
       </div>
+    </div>
+  );
+}
+
+function SearchBar(props) {
+  return (
+    <div className="search-bar">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="#888" strokeWidth="2"/><path d="M20 20l-3.5-3.5" stroke="#888" strokeWidth="2" strokeLinecap="round"/></svg>
+      <input value={props.value} onChange={e => props.onChange(e.target.value)} placeholder={props.placeholder} />
     </div>
   );
 }
@@ -416,28 +435,40 @@ function MainApp({ data, updateData, saving, onLogout }) {
         {tab==="Artículos" && <ArticuloList articulos={articulos} onNew={() => setArticuloModal({ id:uid(), nombre:"", descripcion:"", precio:0 })} onEdit={a => setArticuloModal(Object.assign({},a))} onDelete={id => { if(confirm("¿Eliminar artículo?")) updateData({ articulos: articulos.filter(x=>x.id!==id) }); }} />}
       </div>
 
-      {clienteModal && <Modal title={clientes.find(x=>x.id===clienteModal.id)?"Editar cliente":"Nuevo cliente"} onClose={() => setClienteModal(null)}><ClienteForm c={clienteModal} onChange={setClienteModal} onSave={() => saveCliente(clienteModal)} onCancel={() => setClienteModal(null)} /></Modal>}
+      {clienteModal && <Modal title={clientes.find(x=>x.id===clienteModal.id)?"Editar cliente":"Nuevo cliente"} onClose={() => setClienteModal(null)}><ClienteForm c={clienteModal} clientes={clientes} onChange={setClienteModal} onSave={() => saveCliente(clienteModal)} onCancel={() => setClienteModal(null)} /></Modal>}
       {articuloModal && <Modal title={articulos.find(x=>x.id===articuloModal.id)?"Editar artículo":"Nuevo artículo"} onClose={() => setArticuloModal(null)}><ArticuloForm a={articuloModal} onChange={setArticuloModal} onSave={() => saveArticulo(articuloModal)} onCancel={() => setArticuloModal(null)} /></Modal>}
     </div>
   );
 }
 
 function CotizacionList(props) {
-  const sorted = props.cotizaciones.slice().sort((a,b) => (isNaN(Number(b.numero))?0:Number(b.numero)) - (isNaN(Number(a.numero))?0:Number(a.numero)));
+  const [q, setQ] = useState("");
+  // Orden: más nuevas arriba (por número descendente)
+  let lista = props.cotizaciones.slice().sort((a,b) => (isNaN(Number(b.numero))?0:Number(b.numero)) - (isNaN(Number(a.numero))?0:Number(a.numero)));
+  if (q.trim()) {
+    const nq = norm(q);
+    lista = lista.filter(c => {
+      const campos = [c.numero, c.fecha, c.responsable, c.estado, c.cliente?c.cliente.nombre:"", c.cliente?c.cliente.rut:"", c.cliente?c.cliente.unidad:""];
+      return campos.some(x => norm(x).indexOf(nq) !== -1);
+    });
+  }
   return (
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
         <h1 style={{ fontSize:24, fontWeight:600 }}>Cotizaciones</h1>
         <button className="btn-blue" onClick={props.onNew}>+ Nueva cotización</button>
       </div>
+      <SearchBar value={q} onChange={setQ} placeholder="Buscar por cliente, Nº, RUT, responsable…" />
       <div className="card" style={{ padding:0, overflow:"hidden" }}>
         {props.cotizaciones.length===0
           ? <div style={{ padding:56, textAlign:"center", color:"#888" }}>No hay cotizaciones aún. ¡Crea la primera!</div>
+          : lista.length===0
+          ? <div style={{ padding:40, textAlign:"center", color:"#888" }}>Sin resultados para "{q}".</div>
           : <div>
               <div style={{ overflowX:"auto" }}>
                 <table style={{ width:"100%", minWidth:600 }}>
                   <thead><tr><th>Fecha</th><th>Nº / ID</th><th>Cliente</th><th className="desktop-col">Responsable</th><th style={{textAlign:"right"}}>Total</th><th className="desktop-col">Estado</th><th>Acciones</th></tr></thead>
-                  <tbody>{sorted.map(c => (
+                  <tbody>{lista.map(c => (
                     <tr key={c.id}>
                       <td>{c.fecha}</td>
                       <td style={{ color:"#1a5fa8", fontWeight:700 }}>{c.numero}</td>
@@ -462,14 +493,15 @@ function CotizacionList(props) {
 
 function EditCotizacion(props) {
   const [c, setC] = useState(props.cot);
-  const clientes = props.clientes, articulos = props.articulos;
+  const clientes = props.clientes.slice().sort(byNombre);
+  const articulos = props.articulos.slice().sort(byNombre);
   const set = (k,v) => setC(p => Object.assign({}, p, {[k]:v}));
-  function setCliente(id) { const cl = clientes.find(x => String(x.id)===String(id)); setC(p => Object.assign({}, p, { cliente:cl||null, direccionEnvio:cl?cl.direccion:"" })); }
+  function setCliente(id) { const cl = props.clientes.find(x => String(x.id)===String(id)); setC(p => Object.assign({}, p, { cliente:cl||null, direccionEnvio:cl?cl.direccion:"" })); }
   function addItem() { setC(p => Object.assign({}, p, { items:p.items.concat([initItem()]) })); }
   function removeItem(id) { setC(p => Object.assign({}, p, { items:p.items.filter(x=>x.id!==id) })); }
   function setItem(id,k,v) { setC(p => Object.assign({}, p, { items:p.items.map(x=>x.id===id?Object.assign({},x,{[k]:v}):x) })); }
   function fillFromArt(itemId, nombre) {
-    const art = articulos.find(a=>a.nombre===nombre);
+    const art = props.articulos.find(a=>a.nombre===nombre);
     if (art) setC(p => Object.assign({}, p, { items:p.items.map(x=>x.id===itemId?Object.assign({},x,{nombre:art.nombre,descripcion:art.descripcion,precio:art.precio}):x) }));
     else setItem(itemId,"nombre",nombre);
   }
@@ -552,19 +584,31 @@ function EditCotizacion(props) {
 }
 
 function ClienteList(props) {
+  const [q, setQ] = useState("");
+  let lista = props.clientes.slice().sort(byNombre);
+  if (q.trim()) {
+    const nq = norm(q);
+    lista = lista.filter(c => {
+      const campos = [c.nombre, c.rut, c.contacto, c.email, c.telefono, c.unidad, c.direccion];
+      return campos.some(x => norm(x).indexOf(nq) !== -1);
+    });
+  }
   return (
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
         <h1 style={{ fontSize:24, fontWeight:600 }}>Clientes</h1>
         <button className="btn-blue" onClick={props.onNew}>+ Nuevo cliente</button>
       </div>
+      <SearchBar value={q} onChange={setQ} placeholder="Buscar por nombre, RUT, email, unidad…" />
       <div className="card" style={{ padding:0, overflow:"hidden" }}>
         {props.clientes.length===0
           ? <div style={{ padding:56, textAlign:"center", color:"#888" }}>No hay clientes registrados aún.</div>
+          : lista.length===0
+          ? <div style={{ padding:40, textAlign:"center", color:"#888" }}>Sin resultados para "{q}".</div>
           : <div style={{ overflowX:"auto" }}>
               <table style={{ width:"100%", minWidth:700 }}>
                 <thead><tr><th>Nombre</th><th className="desktop-col">RUT</th><th className="desktop-col">Unidad / Sección</th><th className="desktop-col">Contacto</th><th className="desktop-col">Email</th><th className="desktop-col">Teléfono</th><th>Acciones</th></tr></thead>
-                <tbody>{props.clientes.map(c => (
+                <tbody>{lista.map(c => (
                   <tr key={c.id}>
                     <td style={{ fontWeight:600 }}>{c.nombre}</td>
                     <td className="desktop-col">{c.rut}</td><td className="desktop-col">{c.unidad}</td><td className="desktop-col">{c.contacto}</td><td className="desktop-col">{c.email}</td><td className="desktop-col">{c.telefono}</td>
@@ -586,31 +630,52 @@ function ClienteForm(props) {
   const c = props.c;
   const set = (k,v) => props.onChange(Object.assign({}, c, {[k]:v}));
   const campos = [["nombre","Nombre empresa / cliente",true],["rut","RUT",false],["contacto","Persona de contacto",false],["email","Email",false],["telefono","Teléfono",false],["unidad","Unidad / Sección (opcional)",true],["direccion","Dirección",true]];
+  // Buscar RUT duplicado (otro cliente con el mismo RUT normalizado)
+  const rutDup = c.rut && normRut(c.rut)
+    ? props.clientes.find(x => x.id !== c.id && normRut(x.rut) === normRut(c.rut))
+    : null;
+  function handleSave() {
+    if (rutDup) {
+      const ok = confirm('Ya existe un cliente con el RUT ' + c.rut + ' ("' + rutDup.nombre + '").\n\n¿Deseas guardar de todas formas?');
+      if (!ok) return;
+    }
+    props.onSave();
+  }
   return (
     <div>
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
         {campos.map(arr => <div key={arr[0]} style={arr[2]?{gridColumn:"1/-1"}:{}}><label>{arr[1]}</label><input value={c[arr[0]]||""} onChange={e=>set(arr[0],e.target.value)} /></div>)}
       </div>
+      {rutDup && <div style={{ marginTop:12, padding:"10px 12px", background:"#fff4e5", border:"1px solid #f0c070", borderRadius:8, fontSize:12.5, color:"#8a5a00" }}>
+        ⚠️ Ya existe un cliente con este RUT: <strong>{rutDup.nombre}</strong>. Verifica para no duplicar.
+      </div>}
       <div style={{ display:"flex", gap:8, marginTop:20, justifyContent:"flex-end" }}>
         <button className="btn-outline" onClick={props.onCancel}>Cancelar</button>
-        <button className="btn-blue" onClick={props.onSave}>Guardar cliente</button>
+        <button className="btn-blue" onClick={handleSave}>Guardar cliente</button>
       </div>
     </div>
   );
 }
 
 function ArticuloList(props) {
+  const [q, setQ] = useState("");
+  let lista = props.articulos.slice().sort(byNombre);
+  if (q.trim()) {
+    const nq = norm(q);
+    lista = lista.filter(a => norm(a.nombre).indexOf(nq)!==-1 || norm(a.descripcion).indexOf(nq)!==-1);
+  }
   return (
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
         <h1 style={{ fontSize:24, fontWeight:600 }}>Artículos</h1>
         <button className="btn-blue" onClick={props.onNew}>+ Nuevo artículo</button>
       </div>
+      <SearchBar value={q} onChange={setQ} placeholder="Buscar por nombre o descripción…" />
       <div className="card" style={{ padding:0, overflow:"hidden" }}>
         <div style={{ overflowX:"auto" }}>
           <table style={{ width:"100%", minWidth:500 }}>
             <thead><tr><th>Nombre</th><th className="desktop-col">Descripción</th><th style={{textAlign:"right"}}>Precio</th><th>Acciones</th></tr></thead>
-            <tbody>{props.articulos.map(a => (
+            <tbody>{lista.map(a => (
               <tr key={a.id}>
                 <td style={{ fontWeight:600 }}>{a.nombre}</td>
                 <td className="desktop-col" style={{ color:"#666", maxWidth:340 }}><div style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{a.descripcion}</div></td>
